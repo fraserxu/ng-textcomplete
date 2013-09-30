@@ -1,0 +1,1 @@
+A wrapper on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textcomplete) build for angularjs app
