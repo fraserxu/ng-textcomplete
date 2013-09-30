@@ -1,0 +1,21 @@
+{
+  "name": "ng-textcomplete",
+  "version": "0.0.1",
+  "homepage": "https://github.com/fraserxu/ng-textcomplete",
+  "authors": [
+    "fraserxu <xvfeng123@gmail.com>"
+  ],
+  "description": "autocompleting power to textareas, like GitHub comment forms have, with angularjs",
+  "main": "jquery.textcomplete.js",
+  "keywords": [
+    "textcomplete"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
