@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang='en' ng-app='textcompleteApp'>
+<head>
+  <meta charset='UTF-8'>
+  <title>ng-textcomplete example</title>
+
+  <link rel='stylesheet/less' type='text/css' href='../lib/jquery.textcomplete.css' />
+
+  <script src='./scripts/jquery.min.js'></script>
+  <script src='../lib/jquery.textcomplete.min.js'></script>
+  <script src='./scripts/angular.min.js'></script>
+  <script src='./scripts/app.js'></script>
+  <script src='../ng-textcomplete.js'></script>
+</head>
+<body ng-controller='textcompleteCtrl'>
+
+  {{members}}
+
+  <textcomplete ng-model='members'></textcomplete>
+
+</body>
+</html>

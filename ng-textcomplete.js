@@ -14,15 +14,10 @@ angular.module( 'ngTextcomplete', [
         scope: {
             ngModel: '='
         },
-        template: '<textarea type='text'></textarea>',
+        template: '<textarea type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
-            var mentions = [];
+            var mentions = scope.ngModel;
             var ta = iElement.find('textarea');
-            ta.on('click', function() {
-                angular.forEach(scope.roommebers, function(value, index) {
-                    mentions.push(value.nick);
-                })
-            })
             ta.textcomplete({
                 html: {
                     match: /\B@(\w*)$/,
