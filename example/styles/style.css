@@ -3,9 +3,3 @@ body {
     width: 900px;
     margin: 100px auto;
 }
-
-#content textarea {
-    position: relative;
-    width: 400px;
-    min-height: 200px;
-}
