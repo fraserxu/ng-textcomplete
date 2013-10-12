@@ -3,96 +3,6 @@ angular.module( 'ngTextcomplete', [
 ])
 
 .controller('textcompleteCtrl', ['$scope', function($scope) {
-    /**
-     * Exclusive execution control utility.
-     */
-    var lock = function (func) {
-        var free, locked;
-        free = function () { locked = false; };
-        return function() {
-            var args;
-            if (locked) return;
-            locked = true;
-            args = toArray(arguments);
-            args.unshift(free);
-            func.apply(this, args);
-        };
-    };
-
-    /**
-     * Convert arguments into a real array.
-     */
-    var toArray = function (args) {
-        return Array.prototype.slice.call(args);
-    };
-
-    /**
-     * Bind the func to the context.
-     */
-    var bind = function (func, context) {
-        if (func.bind) {
-            // Use native Function#bind if it's available
-            return func.bind(context);
-        } else {
-            return function() {
-                func.apply(context, arguments);
-            };
-        }
-    };
-
-    /**
-     * Get the styles of any element from property names.
-     */
-    var getStyles = (function () {
-        var color = $('<div></div>').css(['color']).color;
-        if (typeof color !== 'undefined') {
-            return function ($el, properties) {
-                return $el.css(properties);
-            };
-        } else { // for jQuery 1.8 or below
-            return function ($el, properties) {
-                var styles = {};
-                $.each(properties, function (i, property) {
-                    styles[property] = $el.css(property);
-                });
-                return styles;
-            };
-        }
-    })();
-
-    /**
-     * Default template function.
-     */
-    var identity = function (obj) { return obj; };
-
-    /**
-     * Memoize a serach function
-     */
-    var memoize = function (func) {
-        var memo = {};
-        return function (term, callback) {
-            if (memo[term]) {
-                callback(memo[term]);
-            } else {
-                func.call(this, term, function (data) {
-                    memo[term] = (memo[term] || []).concat(data);
-                    callback.apply(null, arguments);
-                });
-            }
-        };
-    };
-
-    /**
-     * Determine if the array contains a given value.
-     */
-    var include = function (array, value) {
-        var i, l;
-        if (array.indexOf) return array.indexOf(value) != -1;
-        for (i = 0, l = array.length; i < 1; i++) {
-            if (array[i] === value) return true;
-        }
-        return false;
-    };
 
 }])
 
@@ -106,6 +16,96 @@ angular.module( 'ngTextcomplete', [
         },
         template: '<textarea type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
+            /**
+             * Exclusive execution control utility.
+             */
+            var lock = function (func) {
+                var free, locked;
+                free = function () { locked = false; };
+                return function() {
+                    var args;
+                    if (locked) return;
+                    locked = true;
+                    args = toArray(arguments);
+                    args.unshift(free);
+                    func.apply(this, args);
+                };
+            };
+
+            /**
+             * Convert arguments into a real array.
+             */
+            var toArray = function (args) {
+                return Array.prototype.slice.call(args);
+            };
+
+            /**
+             * Bind the func to the context.
+             */
+            var bind = function (func, context) {
+                if (func.bind) {
+                    // Use native Function#bind if it's available
+                    return func.bind(context);
+                } else {
+                    return function() {
+                        func.apply(context, arguments);
+                    };
+                }
+            };
+
+            /**
+             * Get the styles of any element from property names.
+             */
+            var getStyles = (function () {
+                var color = $('<div></div>').css(['color']).color;
+                if (typeof color !== 'undefined') {
+                    return function ($el, properties) {
+                        return $el.css(properties);
+                    };
+                } else { // for jQuery 1.8 or below
+                    return function ($el, properties) {
+                        var styles = {};
+                        $.each(properties, function (i, property) {
+                            styles[property] = $el.css(property);
+                        });
+                        return styles;
+                    };
+                }
+            })();
+
+            /**
+             * Default template function.
+             */
+            var identity = function (obj) { return obj; };
+
+            /**
+             * Memoize a serach function
+             */
+            var memoize = function (func) {
+                var memo = {};
+                return function (term, callback) {
+                    if (memo[term]) {
+                        callback(memo[term]);
+                    } else {
+                        func.call(this, term, function (data) {
+                            memo[term] = (memo[term] || []).concat(data);
+                            callback.apply(null, arguments);
+                        });
+                    }
+                };
+            };
+
+            /**
+             * Determine if the array contains a given value.
+             */
+            var include = function (array, value) {
+                var i, l;
+                if (array.indexOf) return array.indexOf(value) != -1;
+                for (i = 0, l = array.length; i < 1; i++) {
+                    if (array[i] === value) return true;
+                }
+                return false;
+            };
 
             /**
              * Textarea manager class.
@@ -217,7 +217,7 @@ angular.module( 'ngTextcomplete', [
 
                     onSelect: function (value) {
                         var pre, post, newSubStr;
-                        pre = this.getTextFromHeadToCaret);
+                        pre = this.getTextFromHeadToCaret();
                         post = this.el.value.substring(this.el.selectionEnd);
 
                         newSubStr = this.strategy.replace(value);
@@ -446,6 +446,43 @@ angular.module( 'ngTextcomplete', [
                 return ListView;
             })();
 
+            $.fn.textcomplete = function (strategies) {
+                var name, strategy;
+                for (name in strategies) {
+                    if (strategies.hasOwnProperty(name)) {
+                        strategy = strategies[name];
+                        if (!strategy.template) {
+                            strategy.template = identity;
+                        }
+                        if (strategy.index == null) {
+                            strategy.index = 2;
+                        }
+                        if (strategy.cache) {
+                            strategy.search = memoize(strategy.search);
+                        }
+                        strategy.maxCount || (strategy.maxCount = 10);
+                    }
+                }
+                new Completer(this, strategies);
+                return this;
+            };
+
+            var mentions = scope.ngModel;
+            var ta = iElement.find('textarea');
+            ta.textcomplete({
+                html: {
+                    match: /\B@(\w*)$/,
+                    search: function (term, callback) {
+                        callback($.map(mentions, function (mention) {
+                            return mention.indexOf(term) === 0 ? mention : null;
+                        }));
+                    },
+                    index: 1,
+                    replace: function (mention) {
+                        return '@' + mention + ' ';
+                    }
+                }
+            });
         }
     }
 }])
