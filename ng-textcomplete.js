@@ -19,7 +19,7 @@ angular.module('ngTextcomplete', [
             /**
              * Exclusive execution control utility.
              */
-            var lock = function(func) {
+            function lock(func) {
                 var free, locked;
                 free = function() {
                     locked = false;
@@ -37,7 +37,7 @@ angular.module('ngTextcomplete', [
             /**
              * Convert arguments into a real array.
              */
-            var toArray = function(args) {
+            function toArray(args) {
                 var result;
                 result = Array.prototype.slice.call(args);
                 return result;
@@ -46,7 +46,7 @@ angular.module('ngTextcomplete', [
             /**
              * Bind the func to the context.
              */
-            var bind = function(func, context) {
+            function bind(func, context) {
                 if (func.bind) {
                     // Use native Function#bind if it's available.
                     return func.bind(context);
@@ -82,14 +82,14 @@ angular.module('ngTextcomplete', [
             /**
              * Default template function.
              */
-            var identity = function(obj) {
+            function identity(obj) {
                 return obj;
             };
 
             /**
              * Memoize a search function.
              */
-            var memoize = function(func) {
+            function memoize(func) {
                 var memo = {};
                 return function(term, callback) {
                     if (memo[term]) {
@@ -106,7 +106,7 @@ angular.module('ngTextcomplete', [
             /**
              * Determine if the array contains a given value.
              */
-            var include = function(array, value) {
+            function include(array, value) {
                 var i, l;
                 if (array.indexOf) return array.indexOf(value) != -1;
                 for (i = 0, l = array.length; i < l; i++) {
