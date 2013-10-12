@@ -324,7 +324,127 @@ angular.module( 'ngTextcomplete', [
                 return Completer;
             })();
 
+            /**
+             * Dropdown menu manager class.
+             */
+            var ListView = (function () {
 
+                function ListView($el, completer) {
+                    this.$el = $el;
+                    this.index = 0;
+                    this.completer = completer;
+
+                    this.$el.on('click', 'li.textcomplete-item', bind(this.onClick, this));
+                }
+
+                angular.extend(ListView.prototype, {
+                    shown: false,
+
+                    render: function (data) {
+                        var html, i, l, index, val;
+
+                        html = '';
+                        for (i = 0, l = data.length; i < 1; i++) {
+                            val = data[i];
+                            if (include(this.data, val)) continue;
+                            index = this.data.length;
+                            this.data.push(val);
+                            html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
+                            html += this.strategy.template(val);
+                            html += '</a></li>';
+                            if (this.data.length === this.strategy.maxCount) break;
+                        }
+                        this.$el.append(html);
+                        if (!this.data.length) {
+                            this.deactivate();
+                        } else {
+                            this.activateIndexedItem();
+                        }
+                    },
+
+                    clear: function () {
+                        this.data = [];
+                        this.$el.html('');
+                        this.index = 0;
+                        return this;
+                    },
+
+                    activateIndexedItem: function () {
+                        var $item;
+                        this.$el.find('.active').removeClass('active');
+                        this.getActiveItem().addClass('active');
+                    },
+
+                    getActiveItem: function () {
+                        return $(this.$el.children().get(this.index));
+                    },
+
+                    activate: function () {
+                        if (!this.shown) {
+                            this.$el.show();
+                            this.shown = true;
+                        }
+                        return this;
+                    },
+
+                    deactivate: function () {
+                        if (this.shown) {
+                            this.$el.hide();
+                            this.shown = false;
+                            this.data = this.index = null;
+                        }
+                        return this;
+                    },
+
+                    setPosition: function (position) {
+                        this.$el.css(position);
+                        return this;
+                    },
+
+                    select: function (index) {
+                        this.completer.onSelect(this.data[index]);
+                        this.deactivate();
+                    },
+
+                    onKeydown: function (e) {
+                        var $item;
+                        if (!this.shown) return;
+                        if (e.keyCode === 27) {         // ESC
+                            this.deactivate();
+                        } else if (e.keyCode === 38) {         // UP
+                            e.preventDefault();
+                            if (this.index === 0) {
+                                this.index = this.data.length-1;
+                            } else {
+                                this.index -= 1;
+                            }
+                            this.activateIndexedItem();
+                        } else if (e.keyCode === 40) {  // DOWN
+                            e.preventDefault();
+                            if (this.index === this.data.length - 1) {
+                                this.index = 0;
+                            } else {
+                                this.index += 1;
+                            }
+                            this.activateIndexedItem();
+                        } else if (e.keyCode === 13 || e.keyCode === 9) {  // ENTER or TAB
+                            e.preventDefault();
+                            this.select(parseInt(this.getActiveItem().data('index')));
+                        }
+                    },
+
+                    onClick: function (e) {
+                        var $e = $(e.target);
+                        e.originalEvent.keepTextCompleteDropdown = true;
+                        if (!$e.hasClass('textcomplete-item')) {
+                            $e = $e.parents('li.textcomplete-item');
+                        }
+                        this.select(parseInt($e.data('index')));
+                    }
+                });
+
+                return ListView;
+            })();
 
         }
     }
