@@ -3,7 +3,6 @@ A wrapper on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textc
 ### Dependencies
 
 * [jQuery](http://jquery.com) (>= 1.7.0) OR Zepto (>= 1.0)
-* [jquery.textcomplete](https://github.com/yuku-t/jquery-textcomplete)
 * [AngularJS](http://angularjs.org) v1.0.1+
 
 
@@ -13,7 +12,6 @@ jQuery MUST be loaded ahead.
 
 ```javascript
 <script src="path/to/jquery.js"></script>
-<script src="path/to/jquery.textcomplete.js"></script>
 ```
 
 Include ng-textcomplete module script with AngularJS script on your page.
