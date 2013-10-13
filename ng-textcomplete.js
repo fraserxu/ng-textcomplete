@@ -5,6 +5,9 @@ angular.module('ngTextcomplete', [
 .controller('textcompleteCtrl', ['$scope', function($scope) {
 }])
 
+/**
+ * Utils.
+ */
 .factory('utils', [function() {
     /**
      * Exclusive execution control utility.
@@ -108,11 +111,10 @@ angular.module('ngTextcomplete', [
     }
 }])
 
+/**
+ * Textarea manager class.
+ */
 .factory('Completer', ['ListView', 'utils', '$log', function(ListView, utils, $log) {
-
-    /**
-     * Textarea manager class.
-     */
     var html, css, $baseWrapper, $baseList;
     html = {
         wrapper: '<div class="textcomplete-wrapper"></div>',
@@ -309,10 +311,10 @@ angular.module('ngTextcomplete', [
     return Completer;
 }])
 
+/**
+ * Dropdown menu manager class.
+ */
 .factory('ListView', ['utils', function(utils) {
-    /**
-     * Dropdown menu manager class.
-     */
     function ListView($el, completer) {
         this.$el = $el;
         this.index = 0;
