@@ -126,7 +126,7 @@ angular.module('ngTextcomplete', [
         },
         list: {
             position: 'absolute',
-            bottom: 0,
+            top: 0,
             left: 0,
             zIndex: '100',
             display: 'none'
@@ -247,18 +247,15 @@ angular.module('ngTextcomplete', [
                 position: 'absolute',
                 overflow: 'auto',
                 'white-space': 'pre-wrap',
-                bottom: 0,
+                top: 0,
                 left: -9999
             }, utils.getStyles(this.$el, properties));
             $div = $('<div></div>').css(css).text(this.getTextFromHeadToCaret());
             $span = $('<span></span>').text('&nbsp;').appendTo($div);
             this.$el.before($div);
             position = $span.position();
+            position.top += $span.height() - this.$el.scrollTop();
 
-            delete position.top;
-            position.bottom = 0;
-
-            position.bottom += 2*$span.height() + this.$el.scrollTop();
             $div.remove();
             return position;
         },
@@ -420,7 +417,42 @@ angular.module('ngTextcomplete', [
     return ListView;
 }])
 
-.directive('textcomplete', ['$log', 'Completer', function($log, Completer) {
+/**
+ * Textcomplete class.
+ */
+.factory('Textcomplete', ['Completer', function(Completer) {
+    /**
+     * Default template function.
+     */
+    function identity(obj) {
+        return obj;
+    };
+
+    function Textcomplete(ta, strategies) {
+        var name, strategy;
+        for (name in strategies) {
+            if (strategies.hasOwnProperty(name)) {
+                strategy = strategies[name];
+                if (!strategy.template) {
+                    strategy.template = identity;
+                }
+                if (strategy.index == null) {
+                    strategy.index = 2;
+                }
+                if (strategy.cache) {
+                    strategy.search = memoize(strategy.search);
+                }
+                strategy.maxCount || (strategy.maxCount = 10);
+                strategy.vertical || (strategy.vertical = 'top');
+            }
+        }
+        return new Completer(ta, strategies);
+    };
+
+    return Textcomplete;
+}])
+
+.directive('textcomplete', ['$log', 'Textcomplete', function($log, Textcomplete) {
     return {
         restrict: 'EA',
         controller: 'textcompleteCtrl',
@@ -430,38 +462,10 @@ angular.module('ngTextcomplete', [
         },
         template: '<textarea type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
-            /**
-             * Default template function.
-             */
-            function identity(obj) {
-                return obj;
-            };
-
-            function textcomplete(ta, strategies) {
-                var name, strategy;
-                for (name in strategies) {
-                    if (strategies.hasOwnProperty(name)) {
-                        strategy = strategies[name];
-                        if (!strategy.template) {
-                            strategy.template = identity;
-                        }
-                        if (strategy.index == null) {
-                            strategy.index = 2;
-                        }
-                        if (strategy.cache) {
-                            strategy.search = memoize(strategy.search);
-                        }
-                        strategy.maxCount || (strategy.maxCount = 10);
-                    }
-                }
-                return new Completer(ta, strategies);
-            };
-
-            $log.debug('Completer', Completer.prototype)
 
             var mentions = scope.ngModel;
             var ta = iElement.find('textarea');
-            textcomplete(ta, {
+            var textcomplete = new Textcomplete(ta, {
                 html: {
                     match: /\B@(\w*)$/,
                     search: function(term, callback) {

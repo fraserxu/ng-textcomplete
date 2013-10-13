@@ -4,8 +4,8 @@
   <meta charset='UTF-8'>
   <title>ng-textcomplete example</title>
 
+  <link rel="stylesheet" href="./styles/normalize.css" />
   <link rel="stylesheet" href="./styles/style.css" />
-  <link rel='stylesheet/less' type='text/css' href='../lib/jquery.textcomplete.css' />
 
   <script src='./scripts/jquery.min.js'></script>
   <script src='./scripts/angular.min.js'></script>
@@ -15,9 +15,12 @@
 <body ng-controller='textcompleteCtrl'>
 
   <div id='content'>
-      <div>members: {{members}}</div>
 
-      <textcomplete ng-model='members'></textcomplete>
+    <div id='title'><h1>ng-textcomplete example</h1></div>
+
+    <div>members: {{members}}</div>
+
+    <textcomplete ng-model='members'></textcomplete>
 
   </div>
 
