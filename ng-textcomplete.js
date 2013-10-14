@@ -2,9 +2,6 @@ angular.module('ngTextcomplete', [
 
 ])
 
-.controller('textcompleteCtrl', ['$scope', function($scope) {
-}])
-
 /**
  * Utils.
  */
@@ -114,7 +111,7 @@ angular.module('ngTextcomplete', [
 /**
  * Textarea manager class.
  */
-.factory('Completer', ['ListView', 'utils', '$log', function(ListView, utils, $log) {
+.factory('Completer', ['ListView', 'utils', '$log', '$rootScope', function(ListView, utils, $log, $rootScope) {
     var html, css, $baseWrapper, $baseList;
     html = {
         wrapper: '<div class="textcomplete-wrapper"></div>',
@@ -217,12 +214,16 @@ angular.module('ngTextcomplete', [
             pre = this.getTextFromHeadToCaret();
             post = this.el.value.substring(this.el.selectionEnd);
             newSubStr = this.strategy.replace(value);
-            if ($.isArray(newSubStr)) {
+            if (angular.isArray(newSubStr)) {
                 post = newSubStr[1] + post;
                 newSubStr = newSubStr[0];
             }
             pre = pre.replace(this.strategy.match, newSubStr);
-            this.$el.val(pre + post);
+            this.$el.val(pre + post)
+
+            $rootScope.message = this.$el.val();
+            $rootScope.$apply();
+
             this.el.focus();
             this.el.selectionStart = this.el.selectionEnd = pre.length;
         },

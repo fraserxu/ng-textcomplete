@@ -22,6 +22,10 @@ textarea {
     vertical-align: middle;
 }
 
+#list {
+    margin-bottom: 20px;
+}
+
 .dropdown-menu {
     background: #fff;
     border: 1px solid #ddd;

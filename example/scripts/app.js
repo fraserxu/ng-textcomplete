@@ -1,21 +1,19 @@
 angular.module('textcompleteApp', ['ngTextcomplete'])
 
 .controller('textcompleteCtrl', ['$scope', function($scope) {
-  $scope.members = ['fraserxu', 'github', 'ngTextcomplete', 'jquery', 'wiredcraft', 'devops'];
+  $scope.members = ['fraserxu', 'github', 'ng-textcomplete', 'jquery', 'wiredcraft', 'devops'];
 }])
 
-.directive('textcomplete', ['$log', 'Textcomplete', function($log, Textcomplete) {
+.directive('textcomplete', ['Textcomplete', '$log', '$rootScope', function(Textcomplete, $log, $rootScope) {
     return {
         restrict: 'EA',
-        controller: 'textcompleteCtrl',
-        require: '^ngModel',
         scope: {
-            ngModel: '='
+            members: '='
         },
-        template: '<textarea type=\'text\'></textarea>',
+        template: '<textarea ng-model=\'message\' type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
 
-            var mentions = scope.ngModel;
+            var mentions = scope.members;
             var ta = iElement.find('textarea');
             var textcomplete = new Textcomplete(ta, {
                 html: {
@@ -31,6 +29,10 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
                     }
                 }
             });
+
+            scope.$watch('message', function(aft, bef) {
+                if(aft != bef) $rootScope.message = aft;
+            })
         }
     }
 }])

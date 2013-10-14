@@ -29,15 +29,13 @@ angular.module('myApp', ['ngTextcomplete'])
 .directive('textcomplete', ['$log', 'Textcomplete', function($log, Textcomplete) {
     return {
         restrict: 'EA',
-        controller: 'textcompleteCtrl',
-        require: '^ngModel',
         scope: {
-            ngModel: '='
+            mentions: '='
         },
         template: '<textarea type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
 
-            var mentions = scope.ngModel;
+            var mentions = scope.mentions;
             var ta = iElement.find('textarea');
             var textcomplete = new Textcomplete(ta, {
                 html: {
