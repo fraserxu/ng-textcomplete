@@ -20,7 +20,7 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
                     match: /\B@(\w*)$/,
                     search: function(term, callback) {
                         callback($.map(mentions, function(mention) {
-                            return mention.toLowerCase().indexOf(term) === 0 ? mention : null;
+                            return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
                         }));
                     },
                     index: 1,
