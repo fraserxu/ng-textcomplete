@@ -421,7 +421,7 @@ angular.module('ngTextcomplete', [
 /**
  * Textcomplete class.
  */
-.factory('Textcomplete', ['Completer', function(Completer) {
+.factory('Textcomplete', ['utils', 'Completer', function(utils, Completer) {
     /**
      * Default template function.
      */
@@ -441,10 +441,9 @@ angular.module('ngTextcomplete', [
                     strategy.index = 2;
                 }
                 if (strategy.cache) {
-                    strategy.search = memoize(strategy.search);
+                    strategy.search = utils.memoize(strategy.search);
                 }
                 strategy.maxCount || (strategy.maxCount = 10);
-                strategy.vertical || (strategy.vertical = 'top');
             }
         }
         return new Completer(ta, strategies);
