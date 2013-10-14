@@ -1,6 +1,4 @@
-angular.module('ngTextcomplete', [
-
-])
+angular.module('ngTextcomplete', [])
 
 /**
  * Utils.

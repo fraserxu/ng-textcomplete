@@ -6,7 +6,7 @@
     "fraserxu <xvfeng123@gmail.com>"
   ],
   "description": "autocompleting power to textareas, like GitHub comment forms have, with angularjs",
-  "main": "jquery.textcomplete.js",
+  "main": "ng-textcomplete.js",
   "keywords": [
     "textcomplete"
   ],

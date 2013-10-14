@@ -1,7 +1,7 @@
 angular.module('textcompleteApp', ['ngTextcomplete'])
 
 .controller('textcompleteCtrl', ['$scope', function($scope) {
-  $scope.members = ['fraserxu', 'github', 'ng-textcomplete', 'jquery', 'wiredcraft', 'devops'];
+  $scope.members = ['fraserxu', 'Fraser', 'github', 'ng-textcomplete', 'jquery', 'wiredcraft', 'devops'];
 }])
 
 .directive('textcomplete', ['Textcomplete', '$log', '$rootScope', function(Textcomplete, $log, $rootScope) {
@@ -20,7 +20,7 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
                     match: /\B@(\w*)$/,
                     search: function(term, callback) {
                         callback($.map(mentions, function(mention) {
-                            return mention.indexOf(term) === 0 ? mention : null;
+                            return mention.toLowerCase().indexOf(term) === 0 ? mention : null;
                         }));
                     },
                     index: 1,
