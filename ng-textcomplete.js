@@ -209,7 +209,7 @@ angular.module('ngTextcomplete', [
                 this.listView.deactivate();
             }
         },
-        onSelect: function(value) {
+        onSelect: function(value, cb) {
             var pre, post, newSubStr;
             pre = this.getTextFromHeadToCaret();
             post = this.el.value.substring(this.el.selectionEnd);
@@ -221,7 +221,7 @@ angular.module('ngTextcomplete', [
             pre = pre.replace(this.strategy.match, newSubStr);
             this.$el.val(pre + post)
 
-            $rootScope.message = this.$el.val();
+            $rootScope.$broadcast('onSelect', this.$el.val());
             $rootScope.$apply();
 
             this.el.focus();

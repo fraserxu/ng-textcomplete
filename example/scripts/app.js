@@ -10,7 +10,7 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
         scope: {
             members: '='
         },
-        template: '<textarea ng-model=\'message\' type=\'text\'></textarea>',
+        template: '<textarea ng-model=\'message\' type=\'text\'></textarea> <div class=\'list\'>{{message}}</div>',
         link: function(scope, iElement, iAttrs) {
 
             var mentions = scope.members;
@@ -31,7 +31,12 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
             });
 
             scope.$watch('message', function(aft, bef) {
-                if(aft != bef) $rootScope.message = aft;
+                $log.log('watch message', scope.message);
+            })
+
+            $rootScope.$on('onSelect', function(event, data) {
+                scope.message = data;
+                $log.log('select message', scope.message)
             })
         }
     }

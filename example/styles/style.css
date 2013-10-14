@@ -22,7 +22,8 @@ textarea {
     vertical-align: middle;
 }
 
-#list {
+.list {
+    margin-top: 20px;
     margin-bottom: 20px;
 }
 
