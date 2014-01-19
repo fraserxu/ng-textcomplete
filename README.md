@@ -26,34 +26,43 @@ Add textcomplete to your app module's dependency.
 ```
 angular.module('myApp', ['ngTextcomplete'])
 
-.directive('textcomplete', ['$log', 'Textcomplete', function($log, Textcomplete) {
+.directive('textcomplete', function(Textcomplete, $log, $rootScope) {
     return {
         restrict: 'EA',
         scope: {
-            mentions: '='
+            members: '='
         },
-        template: '<textarea type=\'text\'></textarea>',
+        template: '<textarea ng-model=\'message\' type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
 
-            var mentions = scope.mentions;
+            var mentions = scope.members;
             var ta = iElement.find('textarea');
             var textcomplete = new Textcomplete(ta, {
-                html: {
-                    match: /\B@(\w*)$/,
+                mention: {
+                    match: /(^|\s)@(\w*)$/,
                     search: function(term, callback) {
                         callback($.map(mentions, function(mention) {
-                            return mention.indexOf(term) === 0 ? mention : null;
+                            return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
                         }));
                     },
-                    index: 1,
+                    index: 2,
                     replace: function(mention) {
-                        return '@' + mention + ' ';
+                        return '$1@' + mention + ' ';
                     }
                 }
             });
+
+            scope.$watch('message', function(aft, bef) {
+                $log.log('watch message', scope.message);
+            })
+
+            $rootScope.$on('onSelect', function(event, data) {
+                scope.message = data;
+                $log.log('select message', scope.message)
+            })
         }
     }
-}]);
+});
 ```
 
 And in your template, use it like this:

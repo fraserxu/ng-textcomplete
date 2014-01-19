@@ -218,6 +218,11 @@ angular.module('ngTextcomplete', [])
             pre = pre.replace(this.strategy.match, newSubStr);
             this.$el.val(pre + post)
 
+            /**
+             * Here is the main difference from the original repo cause
+             * once the user select the text, this result doesn't return
+             * back to the `$scope` object in angularjs
+             */
             $rootScope.$broadcast('onSelect', this.$el.val());
             $rootScope.$apply();
 
