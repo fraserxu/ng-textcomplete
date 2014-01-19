@@ -8,24 +8,25 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
     return {
         restrict: 'EA',
         scope: {
-            members: '='
+            members: '=',
+            message: '='
         },
-        template: '<textarea ng-model=\'message\' type=\'text\'></textarea> <div class=\'list\'>{{message}}</div>',
+        template: '<textarea ng-model=\'message\' type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
 
             var mentions = scope.members;
             var ta = iElement.find('textarea');
             var textcomplete = new Textcomplete(ta, {
-                html: {
-                    match: /\B@(\w*)$/,
+                mention: {
+                    match: /(^|\s)@(\w*)$/,
                     search: function(term, callback) {
                         callback($.map(mentions, function(mention) {
                             return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
                         }));
                     },
-                    index: 1,
+                    index: 2,
                     replace: function(mention) {
-                        return '@' + mention + ' ';
+                        return '$1@' + mention + ' ';
                     }
                 }
             });
