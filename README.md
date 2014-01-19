@@ -1,4 +1,6 @@
-A wrapper on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textcomplete), build for angularjs app
+## ng-textcomplete
+
+Github like autocompleter in any textarea for angularjs. This module is build on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textcomplete), build for angularjs app.
 
 ### Dependencies
 
@@ -23,7 +25,7 @@ Include ng-textcomplete module script with AngularJS script on your page.
 
 Add textcomplete to your app module's dependency.
 
-```
+```javascript
 angular.module('myApp', ['ngTextcomplete'])
 
 .directive('textcomplete', function(Textcomplete, $log, $rootScope) {
@@ -67,19 +69,15 @@ angular.module('myApp', ['ngTextcomplete'])
 
 And in your template, use it like this:
 ```
-<textcomplete ng-model='members'></textcomplete>
+<textcomplete members='members' message='message'></textcomplete>
 ```
 
 ### Install with Bower
 
 Note that the ng-textcomplete bower package contains no AngularJS dependency.
 
-```
-# install AngularJS (stable)
-bower install angular
-# or (unstable)
-bower install PatternConsulting/bower-angular
+`$ bower install ng-textcomplete`
 
-# install ng-textcomplete
-bower install ng-textcomplete
-```
+This module is still way far from being perfect, but is ready for production.
+You can use it in your project. And anytime you think it's not good and want to
+improve it, a **pull request** is more than welcome.
