@@ -1,3 +1,5 @@
+'use strict';
+
 angular.module('ngTextcomplete', [])
 
 /**
@@ -26,22 +28,16 @@ angular.module('ngTextcomplete', [])
      * Convert arguments into a real array.
      */
     function toArray(args) {
-        var result;
-        result = Array.prototype.slice.call(args);
-        return result;
+        return Array.prototype.slice.call(args);
     };
 
     /**
      * Bind the func to the context.
      */
     function bind(func, context) {
-        if (func.bind) {
-            // Use native Function#bind if it's available.
-            return func.bind(context);
-        } else {
-            return function() {
-                func.apply(context, arguments);
-            };
+        // Use native Function#bind if it's available.
+        return func.bind ? func.bind(context) : function() {
+            func.apply(context, arguments)
         }
     };
 
@@ -109,7 +105,8 @@ angular.module('ngTextcomplete', [])
 /**
  * Textarea manager class.
  */
-.factory('Completer', ['ListView', 'utils', '$log', '$rootScope', function(ListView, utils, $log, $rootScope) {
+.factory('Completer', ['ListView', 'utils', '$rootScope',
+    function(ListView, utils, $rootScope) {
     var html, css, $baseWrapper, $baseList;
     html = {
         wrapper: '<div class="textcomplete-wrapper"></div>',
@@ -427,6 +424,11 @@ angular.module('ngTextcomplete', [])
         return obj;
     };
 
+    /**
+     * Textcomplete class
+     * @param {[type]} ta         [description]
+     * @param {[type]} strategies [description]
+     */
     function Textcomplete(ta, strategies) {
         var name, strategy;
         for (name in strategies) {
@@ -441,7 +443,7 @@ angular.module('ngTextcomplete', [])
                 if (strategy.cache) {
                     strategy.search = utils.memoize(strategy.search);
                 }
-                strategy.maxCount || (strategy.maxCount = 10);
+                strategy.maxCount = strategy.maxCount || 10;
             }
         }
         return new Completer(ta, strategies);
