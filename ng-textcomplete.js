@@ -59,10 +59,10 @@ angular.module('ngTextcomplete', [])
             return function($el, properties) {
                 var styles;
                 styles = {};
-                $.each(properties, function(i, property) {
+                angular.forEach(properties, function(property, i) {
                     styles[property] = $el.css(property);
                 });
-                return styles
+                return styles;
             };
         }
     })();
