@@ -81,3 +81,9 @@ Note that the ng-textcomplete bower package contains no AngularJS dependency.
 This module is still way far from being perfect, but is ready for production.
 You can use it in your project. And anytime you think it's not good and want to
 improve it, a **pull request** is more than welcome.
+
+### Build
+```
+$ npm install uglify-js -g
+$ uglifyjs ng-textcomplete.js > ng-textcomplete.min.js
+```
