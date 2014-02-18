@@ -233,7 +233,7 @@ angular.module('ngTextcomplete', [])
             } else {
               this.$el.val(pre + post);
             }
-            this.$el.trigger('change').trigger('textComplete:select', value);
+            this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
 
             /**
              * Here is the main difference from the original repo cause
