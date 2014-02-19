@@ -131,36 +131,48 @@ angular.module('ngTextcomplete', [])
      * Completer manager class.
      */
     function Completer($el, strategies) {
-        var $wrapper, $list, focused;
-        $list = $baseList.clone();
-        this.el = $el.get(0); // textarea element
-        this.$el = $el;
-        $wrapper = _prepareWrapper(this.$el);
-        // Refocus the textarea if it is being focused
-        focused = this.el === document.activeElement;
-        this.$el.wrap($wrapper).before($list);
-        if (focused) {
-            this.el.focus();
-        }
-        this.listView = new ListView($list, this);
+        var focus;
+        this.el = $el.get(0);  // textarea element
+        focus = this.el === document.activeElement;
+        // Cannot wrap $el at initialize method lazily due to Firefox's behavior.
+        this.$el = wrapElement($el); // Focus is lost
         this.strategies = strategies;
-        this.$el.on('keyup', utils.bind(this.onKeyup, this));
-        this.$el.on('keydown', utils.bind(this.listView.onKeydown, this.listView));
-        // Global click event handler
-        $(document).on('click', utils.bind(function(e) {
-            if (e.originalEvent && !e.originalEvent.keepTextCompleteDropdown) {
-                this.listView.deactivate();
-            }
-        }, this));
+        if (focus) {
+            this.initialize();
+            this.$el.focus();
+        } else {
+            this.$el.one('focus.textComplete', $.proxy(this.initialize, this));
+        }
     };
 
     /**
      * Completer's public methods
      */
     angular.extend(Completer.prototype, {
+
         /**
-         * Show autocomplete list next to the caret.
-         */
+        * Prepare ListView and bind events.
+        */
+        initialize: function () {
+            var $list, globalEvents;
+            $list = $baseList.clone();
+            this.listView = new ListView($list, this);
+            this.$el
+              .before($list)
+              .on({
+                'keyup.textComplete': $.proxy(this.onKeyup, this),
+                'keydown.textComplete': $.proxy(this.listView.onKeydown,
+                                                this.listView)
+              });
+            globalEvents = {};
+            globalEvents['click.' + this.id] = $.proxy(this.onClickDocument, this);
+            globalEvents['keyup.' + this.id] = $.proxy(this.onKeyupDocument, this);
+            $(document).on(globalEvents);
+        },
+
+        /**
+        * Show autocomplete list next to the caret.
+        */
         renderList: function(data) {
             if (this.clearAtNext) {
                 this.listView.clear();
@@ -339,11 +351,12 @@ angular.module('ngTextcomplete', [])
         })
     });
 
+
     /**
      * Completer's private functions
      */
-    function _prepareWrapper($el) {
-        return $baseWrapper.css('display', $el.css('display'));
+    var wrapElement = function ($el) {
+        return $el.wrap($baseWrapper.clone().css('display', $el.css('display')));
     };
 
     return Completer;
@@ -472,10 +485,10 @@ angular.module('ngTextcomplete', [])
 
     /**
      * Textcomplete class
-     * @param {[type]} ta         [description]
-     * @param {[type]} strategies [description]
+     * @param {Element} element
+     * @param {Object} strategies
      */
-    function Textcomplete(ta, strategies) {
+    function Textcomplete(element, strategies) {
         var name, strategy;
         for (name in strategies) {
             if (strategies.hasOwnProperty(name)) {
@@ -492,7 +505,7 @@ angular.module('ngTextcomplete', [])
                 strategy.maxCount = strategy.maxCount || 10;
             }
         }
-        return new Completer(ta, strategies);
+        return new Completer(element, strategies);
     };
 
     return Textcomplete;
