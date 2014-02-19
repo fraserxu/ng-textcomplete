@@ -206,17 +206,34 @@ angular.module('ngTextcomplete', [])
                 this.listView.deactivate();
             }
         },
-        onSelect: function(value, cb) {
-            var pre, post, newSubStr;
+
+        onSelect: function (value) {
+            var pre, post, newSubStr, selectionEnd;
             pre = this.getTextFromHeadToCaret();
-            post = this.el.value.substring(this.el.selectionEnd);
+            selectionEnd = this.el.selectionEnd;
+            if (this.el.contentEditable === 'true') {
+              var range = window.getSelection().getRangeAt(0);
+              var preSelectionRange = range.cloneRange();
+              preSelectionRange.selectNodeContents(this.el);
+              preSelectionRange.setEnd(range.startContainer, range.startOffset);
+              selectionEnd = preSelectionRange.toString().length + range.toString().length;
+              post = this.el.innerHTML.substring(selectionEnd);
+            } else {
+              post = this.el.value.substring(selectionEnd);
+            }
+
             newSubStr = this.strategy.replace(value);
             if (angular.isArray(newSubStr)) {
                 post = newSubStr[1] + post;
                 newSubStr = newSubStr[0];
             }
             pre = pre.replace(this.strategy.match, newSubStr);
-            this.$el.val(pre + post)
+            if (this.el.contentEditable === 'true') {
+              this.el.innerHTML = pre + post;
+            } else {
+              this.$el.val(pre + post);
+            }
+            this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
 
             /**
              * Here is the main difference from the original repo cause
@@ -236,42 +253,63 @@ angular.module('ngTextcomplete', [])
         /**
          * Returns caret's relative coordinates from textarea's left top corner.
          */
-        getCaretPosition: function() {
+        getCaretPosition: function () {
             // Browser native API does not provide the way to know the position of
             // caret in pixels, so that here we use a kind of hack to accomplish
             // the aim. First of all it puts a div element and completely copies
             // the textarea's style to the element, then it inserts the text and a
             // span element into the textarea.
             // Consequently, the span element's position is the thing what we want.
+
             if (this.el.selectionEnd === 0) return;
-            var properties, css, $div, $span, position;
-            properties = ['border-width', 'font-family', 'font-size', 'font-style', 'font-variant', 'font-weight', 'height', 'letter-spacing', 'word-spacing', 'line-height', 'text-decoration', 'width', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left'];
+            var properties, css, $div, $span, position, dir;
+
+            dir = this.$el.attr('dir') || this.$el.css('direction');
+            properties = ['border-width', 'font-family', 'font-size', 'font-style',
+              'font-variant', 'font-weight', 'height', 'letter-spacing',
+              'word-spacing', 'line-height', 'text-decoration', 'text-align',
+              'width', 'padding-top', 'padding-right', 'padding-bottom',
+              'padding-left', 'margin-top', 'margin-right', 'margin-bottom',
+              'margin-left'
+            ];
             css = angular.extend({
-                position: 'absolute',
-                overflow: 'auto',
-                'white-space': 'pre-wrap',
-                top: 0,
-                left: -9999
+              position: 'absolute',
+              overflow: 'auto',
+              'white-space': 'pre-wrap',
+              top: 0,
+              left: -9999,
+              direction: dir
             }, utils.getStyles(this.$el, properties));
+
             $div = $('<div></div>').css(css).text(this.getTextFromHeadToCaret());
-            $span = $('<span></span>').text('&nbsp;').appendTo($div);
+            $span = $('<span></span>').text('.').appendTo($div);
             this.$el.before($div);
             position = $span.position();
             position.top += $span.height() - this.$el.scrollTop();
 
+            if (dir == 'rtl') {
+                position.left -= this.listView.$el.width();
+            }
+
             $div.remove();
             return position;
         },
-        getTextFromHeadToCaret: function() {
+        getTextFromHeadToCaret: function () {
             var text, selectionEnd, range;
             selectionEnd = this.el.selectionEnd;
-            if (typeof selectionEnd === 'number') {
-                text = this.el.value.substring(0, selectionEnd);
+            if (typeof selectionEnd === 'number' && this.el.contentEditable !== 'true') {
+              text = this.el.value.substring(0, selectionEnd);
             } else if (document.selection) {
-                range = this.el.createTextRange();
-                range.moveStart('character', 0);
-                range.moveEnd('textedit');
-                text = range.text;
+              range = this.el.createTextRange();
+              range.moveStart('character', 0);
+              range.moveEnd('textedit');
+              text = range.text;
+            } else if (this.el.contentEditable === 'true') {
+              range = window.getSelection().getRangeAt(0);
+              var preSelectionRange = range.cloneRange();
+              preSelectionRange.selectNodeContents(this.el);
+              preSelectionRange.setEnd(range.startContainer, range.startOffset);
+              text = preSelectionRange.toString();
             }
             return text;
         },
@@ -316,6 +354,7 @@ angular.module('ngTextcomplete', [])
  */
 .factory('ListView', ['utils', function(utils) {
     function ListView($el, completer) {
+        this.data = [];
         this.$el = $el;
         this.index = 0;
         this.completer = completer;
