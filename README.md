@@ -1,6 +1,6 @@
 ## ng-textcomplete
 
-Github like autocompleter in any textarea for angularjs. This module is build on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textcomplete), build for angularjs app.
+Github like autocompleter in any textarea for angularjs. This module is build on top of [jquery-textcomplete](https://github.com/yuku-t/jquery-textcomplete), build for angularjs app. For demo you may check the [example folder](https://github.com/fraserxu/ng-textcomplete/tree/master/example).
 
 ### Dependencies
 
@@ -72,6 +72,12 @@ And in your template, use it like this:
 <textcomplete members='members' message='message'></textcomplete>
 ```
 
+You can also use it in any element with a `contenteditable` attribute set to `true`
+```
+<div textcomplete members='members' message='message' contenteditable='true'></div>
+```
+
+
 ### Install with Bower
 
 Note that the ng-textcomplete bower package contains no AngularJS dependency.
@@ -87,3 +93,6 @@ improve it, a **pull request** is more than welcome.
 $ npm install uglify-js -g
 $ uglifyjs ng-textcomplete.js > ng-textcomplete.min.js
 ```
+
+### Contributor
+* [lpsBetty](https://github.com/lpsBetty) add contenteditable support
