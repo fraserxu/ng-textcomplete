@@ -239,24 +239,18 @@ angular.module('ngTextcomplete', [])
                 post = newSubStr[1] + post;
                 newSubStr = newSubStr[0];
             }
+
             pre = pre.replace(this.strategy.match, newSubStr);
             if (this.el.contentEditable === 'true') {
               this.el.innerHTML = pre + post;
+              this.placeCaretAtEnd();
             } else {
               this.$el.val(pre + post);
+              this.el.focus();
+              this.el.selectionStart = this.el.selectionEnd = pre.length;
             }
+
             this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
-
-            /**
-             * Here is the main difference from the original repo cause
-             * once the user select the text, this result doesn't return
-             * back to the `$scope` object in angularjs
-             */
-            $rootScope.$broadcast('onSelect', this.$el.val());
-            $rootScope.$apply();
-
-            this.el.focus();
-            this.el.selectionStart = this.el.selectionEnd = pre.length;
         },
 
         // Helper methods
@@ -325,6 +319,30 @@ angular.module('ngTextcomplete', [])
             }
             return text;
         },
+
+        /**
+         * Sets caret at the end of the text (cross-browser).
+         * Only needed for contenteditable element.
+         * http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
+         */
+        placeCaretAtEnd: function() {
+            if (typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
+                var selection = window.getSelection();
+                var range = document.createRange();
+
+                range.selectNodeContents(this.el);
+                range.collapse(false);
+
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else if (typeof document.body.createTextRange !== 'undefined') {
+                var textRange = document.body.createTextRange();
+                textRange.moveToElementText(this.el);
+                textRange.collapse(false);
+                textRange.select();
+            }
+        },
+
         /**
          * Parse the value of textarea and extract search query.
          */
