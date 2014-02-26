@@ -28,43 +28,37 @@ Add textcomplete to your app module's dependency.
 ```javascript
 angular.module('myApp', ['ngTextcomplete'])
 
-.directive('textcomplete', function(Textcomplete, $log, $rootScope) {
+.directive('textcomplete', ['Textcomplete', function(Textcomplete) {
     return {
         restrict: 'EA',
         scope: {
-            members: '='
+            members: '=',
+            message: '='
         },
         template: '<textarea ng-model=\'message\' type=\'text\'></textarea>',
         link: function(scope, iElement, iAttrs) {
 
             var mentions = scope.members;
             var ta = iElement.find('textarea');
-            var textcomplete = new Textcomplete(ta, {
-                mention: {
-                    match: /(^|\s)@(\w*)$/,
-                    search: function(term, callback) {
-                        callback($.map(mentions, function(mention) {
-                            return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
-                        }));
-                    },
-                    index: 2,
-                    replace: function(mention) {
-                        return '$1@' + mention + ' ';
-                    }
+            var textcomplete = new Textcomplete(ta, [
+              {
+                match: /(^|\s)@(\w*)$/,
+                search: function(term, callback) {
+                    callback($.map(mentions, function(mention) {
+                        return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
+                    }));
+                },
+                index: 2,
+                replace: function(mention) {
+                    return '$1@' + mention + ' ';
                 }
-            });
+              }
+            ]);
 
-            scope.$watch('message', function(aft, bef) {
-                $log.log('watch message', scope.message);
-            })
-
-            $rootScope.$on('onSelect', function(event, data) {
-                scope.message = data;
-                $log.log('select message', scope.message)
-            })
+            console.log('textcomplete', textcomplete)
         }
     }
-});
+}]);
 ```
 
 And in your template, use it like this:
@@ -95,4 +89,4 @@ $ uglifyjs ng-textcomplete.js > ng-textcomplete.min.js
 ```
 
 ### Contributor
-* [lpsBetty](https://github.com/lpsBetty) add contenteditable support
+* [lpsBetty](https://github.com/lpsBetty)
