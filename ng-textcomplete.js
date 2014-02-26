@@ -5,144 +5,148 @@ angular.module('ngTextcomplete', [])
 /**
  * Utils.
  */
-.factory('utils', [function() {
+.factory('utils', [
+  function() {
     /**
      * Exclusive execution control utility.
      */
     function lock(func) {
-        var free, locked;
-        free = function() {
-            locked = false;
-        };
-        return function() {
-            var args;
-            if (locked) return;
-            locked = true;
-            args = toArray(arguments);
-            args.unshift(free);
-            func.apply(this, args);
-        };
+      var free, locked;
+      free = function() {
+        locked = false;
+      };
+      return function() {
+        var args;
+        if (locked) return;
+        locked = true;
+        args = toArray(arguments);
+        args.unshift(free);
+        func.apply(this, args);
+      };
     };
 
     /**
      * Convert arguments into a real array.
      */
     function toArray(args) {
-        return Array.prototype.slice.call(args);
+      return Array.prototype.slice.call(args);
     };
 
     /**
      * Bind the func to the context.
      */
     function bind(func, context) {
-        // Use native Function#bind if it's available.
-        return func.bind ? func.bind(context) : function() {
-            func.apply(context, arguments)
-        }
+      // Use native Function#bind if it's available.
+      return func.bind ? func.bind(context) : function() {
+        func.apply(context, arguments)
+      }
     };
 
     /**
      * Get the styles of any element from property names.
      */
     var getStyles = (function() {
-        var color;
-        color = $('<div></div>').css(['color']).color;
-        if (typeof color !== 'undefined') {
-            return function($el, properties) {
-                return $el.css(properties);
-            };
-        } else { // for jQuery 1.8 or below
-            return function($el, properties) {
-                var styles;
-                styles = {};
-                angular.forEach(properties, function(property, i) {
-                    styles[property] = $el.css(property);
-                });
-                return styles;
-            };
-        }
+      var color;
+      color = $('<div></div>').css(['color']).color;
+      if (typeof color !== 'undefined') {
+        return function($el, properties) {
+          return $el.css(properties);
+        };
+      } else { // for jQuery 1.8 or below
+        return function($el, properties) {
+          var styles;
+          styles = {};
+          angular.forEach(properties, function(property, i) {
+            styles[property] = $el.css(property);
+          });
+          return styles;
+        };
+      }
     })();
 
     /**
      * Memoize a search function.
      */
     function memoize(func) {
-        var memo = {};
-        return function(term, callback) {
-            if (memo[term]) {
-                callback(memo[term]);
-            } else {
-                func.call(this, term, function(data) {
-                    memo[term] = (memo[term] || []).concat(data);
-                    callback.apply(null, arguments);
-                });
-            }
-        };
+      var memo = {};
+      return function(term, callback) {
+        if (memo[term]) {
+          callback(memo[term]);
+        } else {
+          func.call(this, term, function(data) {
+            memo[term] = (memo[term] || []).concat(data);
+            callback.apply(null, arguments);
+          });
+        }
+      };
     };
 
     /**
      * Determine if the array contains a given value.
      */
     function include(array, value) {
-        var i, l;
-        if (array.indexOf) return array.indexOf(value) != -1;
-        for (i = 0, l = array.length; i < l; i++) {
-            if (array[i] === value) return true;
-        }
-        return false;
+      var i, l;
+      if (array.indexOf) return array.indexOf(value) != -1;
+      for (i = 0, l = array.length; i < l; i++) {
+        if (array[i] === value) return true;
+      }
+      return false;
     };
 
     return {
-        lock: lock,
-        toArray: toArray,
-        bind: bind,
-        getStyles: getStyles,
-        memoize: memoize,
-        include: include
+      lock: lock,
+      toArray: toArray,
+      bind: bind,
+      getStyles: getStyles,
+      memoize: memoize,
+      include: include
     }
-}])
+  }
+])
 
 /**
  * Textarea manager class.
  */
-.factory('Completer', ['ListView', 'utils', '$rootScope',
-    function(ListView, utils, $rootScope) {
-    var html, css, $baseWrapper, $baseList;
+.factory('Completer', ['ListView', 'utils',
+  function(ListView, utils) {
+    var html, css, $baseWrapper, $baseList, _id;
     html = {
-        wrapper: '<div class="textcomplete-wrapper"></div>',
-        list: '<ul class="dropdown-menu"></ul>'
+      wrapper: '<div class="textcomplete-wrapper"></div>',
+      list: '<ul class="dropdown-menu"></ul>'
     };
     css = {
-        wrapper: {
-            position: 'relative'
-        },
-        list: {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            zIndex: '100',
-            display: 'none'
-        }
+      wrapper: {
+        position: 'relative'
+      },
+      list: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        zIndex: '100',
+        display: 'none'
+      }
     };
     $baseWrapper = $(html.wrapper).css(css.wrapper);
     $baseList = $(html.list).css(css.list);
+    _id = 0;
 
     /**
      * Completer manager class.
      */
     function Completer($el, strategies) {
-        var focus;
-        this.el = $el.get(0);  // textarea element
-        focus = this.el === document.activeElement;
-        // Cannot wrap $el at initialize method lazily due to Firefox's behavior.
-        this.$el = wrapElement($el); // Focus is lost
-        this.strategies = strategies;
-        if (focus) {
-            this.initialize();
-            this.$el.focus();
-        } else {
-            this.$el.one('focus.textComplete', $.proxy(this.initialize, this));
-        }
+      var focus;
+      this.el = $el.get(0); // textarea element
+      focus = this.el === document.activeElement;
+      // Cannot wrap $el at initialize method lazily due to Firefox's behavior.
+      this.$el = wrapElement($el); // Focus is lost
+      this.id = 'textComplete' + _id++;
+      this.strategies = [];
+      if (focus) {
+        this.initialize();
+        this.$el.focus();
+      } else {
+        this.$el.one('focus.textComplete', $.proxy(this.initialize, this));
+      }
     };
 
     /**
@@ -150,355 +154,435 @@ angular.module('ngTextcomplete', [])
      */
     angular.extend(Completer.prototype, {
 
-        /**
-        * Prepare ListView and bind events.
-        */
-        initialize: function () {
-            var $list, globalEvents;
-            $list = $baseList.clone();
-            this.listView = new ListView($list, this);
-            this.$el
-              .before($list)
-              .on({
-                'keyup.textComplete': $.proxy(this.onKeyup, this),
-                'keydown.textComplete': $.proxy(this.listView.onKeydown,
-                                                this.listView)
-              });
-            globalEvents = {};
-            globalEvents['click.' + this.id] = $.proxy(this.onClickDocument, this);
-            globalEvents['keyup.' + this.id] = $.proxy(this.onKeyupDocument, this);
-            $(document).on(globalEvents);
-        },
+      /**
+       * Prepare ListView and bind events.
+       */
+      initialize: function() {
+        var $list, globalEvents;
+        $list = $baseList.clone();
+        this.listView = new ListView($list, this);
+        this.$el
+          .before($list)
+          .on({
+            'keyup.textComplete': $.proxy(this.onKeyup, this),
+            'keydown.textComplete': $.proxy(this.listView.onKeydown,
+              this.listView)
+          });
+        globalEvents = {};
+        globalEvents['click.' + this.id] = $.proxy(this.onClickDocument, this);
+        globalEvents['keyup.' + this.id] = $.proxy(this.onKeyupDocument, this);
+        $(document).on(globalEvents);
+      },
 
-        /**
-        * Show autocomplete list next to the caret.
-        */
-        renderList: function(data) {
-            if (this.clearAtNext) {
-                this.listView.clear();
-                this.clearAtNext = false;
-            }
-            if (data.length) {
-                if (!this.listView.shown) {
-                    this.listView.setPosition(this.getCaretPosition()).clear().activate();
-                    this.listView.strategy = this.strategy;
-                }
-                data = data.slice(0, this.strategy.maxCount);
-                this.listView.render(data);
-            }
+      /**
+       * Register strategies to the completer.
+       */
+      register: function (strategies) {
+        this.strategies = this.strategies.concat(strategies);
+      },
 
-            if (!this.listView.data.length && this.listView.shown) {
-                this.listView.deactivate();
-            }
-        },
-        searchCallbackFactory: function(free) {
-            var self = this;
-            return function(data, keep) {
-                self.renderList(data);
-                if (!keep) {
-                    // This is the last callback for this search.
-                    free();
-                    self.clearAtNext = true;
-                }
-            };
-        },
-        /**
-         * Keyup event handler.
-         */
-        onKeyup: function(e) {
-            var searchQuery, term;
-            searchQuery = this.extractSearchQuery(this.getTextFromHeadToCaret());
-            if (searchQuery.length) {
-                term = searchQuery[1];
-                if (this.term === term) return; // Ignore shift-key or something.
-                this.term = term;
-                this.search(searchQuery);
-            } else {
-                this.term = null;
-                this.listView.deactivate();
-            }
-        },
+      /**
+       * Show autocomplete list next to the caret.
+       */
+      renderList: function(data) {
+        if (this.clearAtNext) {
+          this.listView.clear();
+          this.clearAtNext = false;
+        }
+        if (data.length) {
+          if (!this.listView.shown) {
+            this.listView
+                .setPosition(this.getCaretPosition())
+                .clear()
+                .activate();
+            this.listView.strategy = this.strategy;
+          }
+          data = data.slice(0, this.strategy.maxCount);
+          this.listView.render(data);
+        }
 
-        onSelect: function (value) {
-            var pre, post, newSubStr, selectionEnd;
-            pre = this.getTextFromHeadToCaret();
-            selectionEnd = this.el.selectionEnd;
-            if (this.el.contentEditable === 'true') {
-              var range = window.getSelection().getRangeAt(0);
-              var preSelectionRange = range.cloneRange();
-              preSelectionRange.selectNodeContents(this.el);
-              preSelectionRange.setEnd(range.startContainer, range.startOffset);
-              selectionEnd = preSelectionRange.toString().length + range.toString().length;
-              post = this.el.innerHTML.substring(selectionEnd);
-            } else {
-              post = this.el.value.substring(selectionEnd);
-            }
+        if (!this.listView.data.length && this.listView.shown) {
+          this.listView.deactivate();
+        }
+      },
 
-            newSubStr = this.strategy.replace(value);
-            if (angular.isArray(newSubStr)) {
-                post = newSubStr[1] + post;
-                newSubStr = newSubStr[0];
-            }
+      searchCallbackFactory: function(free) {
+        var self = this;
+        return function(data, keep) {
+          self.renderList(data);
+          if (!keep) {
+            // This is the last callback for this search.
+            free();
+            self.clearAtNext = true;
+          }
+        };
+      },
 
-            pre = pre.replace(this.strategy.match, newSubStr);
-            if (this.el.contentEditable === 'true') {
-              this.el.innerHTML = pre + post;
-              this.placeCaretAtEnd();
-            } else {
-              this.$el.val(pre + post);
-              this.el.focus();
-              this.el.selectionStart = this.el.selectionEnd = pre.length;
-            }
+      /**
+       * Keyup event handler.
+       */
+      onKeyup: function(e) {
+        var searchQuery, term;
+        if (this.skipSearch(e)) { return; }
 
-            this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
-        },
+        searchQuery = this.extractSearchQuery(this.getTextFromHeadToCaret());
+        if (searchQuery.length) {
+          term = searchQuery[1];
+          if (this.term === term) return; // Ignore shift-key or something.
+          this.term = term;
+          this.search(searchQuery);
+        } else {
+          this.term = null;
+          this.listView.deactivate();
+        }
+      },
 
-        // Helper methods
-        // ==============
+      /**
+       * Suppress searching if it returns true.
+       */
+      skipSearch: function (e) {
+        if (this.skipNextKeyup) {
+          this.skipNextKeyup = false;
+          return true;
+        }
+        switch (e.keyCode) {
+          case 40:
+          case 38:
+            return true;
+        }
+      },
 
-        /**
-         * Returns caret's relative coordinates from textarea's left top corner.
-         */
-        getCaretPosition: function () {
-            // Browser native API does not provide the way to know the position of
-            // caret in pixels, so that here we use a kind of hack to accomplish
-            // the aim. First of all it puts a div element and completely copies
-            // the textarea's style to the element, then it inserts the text and a
-            // span element into the textarea.
-            // Consequently, the span element's position is the thing what we want.
+      onSelect: function(value) {
+        var pre, post, newSubStr, selectionEnd;
+        pre = this.getTextFromHeadToCaret();
+        selectionEnd = this.el.selectionEnd;
+        if (this.el.contentEditable === 'true') {
+          var range = window.getSelection().getRangeAt(0);
+          var preSelectionRange = range.cloneRange();
+          preSelectionRange.selectNodeContents(this.el);
+          preSelectionRange.setEnd(range.startContainer, range.startOffset);
+          selectionEnd = preSelectionRange.toString().length + range.toString().length;
+          post = this.el.innerHTML.substring(selectionEnd);
+        } else {
+          post = this.el.value.substring(selectionEnd);
+        }
 
-            if (this.el.selectionEnd === 0) return;
-            var properties, css, $div, $span, position, dir;
+        newSubStr = this.strategy.replace(value);
+        if (angular.isArray(newSubStr)) {
+          post = newSubStr[1] + post;
+          newSubStr = newSubStr[0];
+        }
 
-            dir = this.$el.attr('dir') || this.$el.css('direction');
-            properties = ['border-width', 'font-family', 'font-size', 'font-style',
-              'font-variant', 'font-weight', 'height', 'letter-spacing',
-              'word-spacing', 'line-height', 'text-decoration', 'text-align',
-              'width', 'padding-top', 'padding-right', 'padding-bottom',
-              'padding-left', 'margin-top', 'margin-right', 'margin-bottom',
-              'margin-left'
-            ];
-            css = angular.extend({
-              position: 'absolute',
-              overflow: 'auto',
-              'white-space': 'pre-wrap',
-              top: 0,
-              left: -9999,
-              direction: dir
-            }, utils.getStyles(this.$el, properties));
+        pre = pre.replace(this.strategy.match, newSubStr);
+        if (this.el.contentEditable === 'true') {
+          this.el.innerHTML = pre + post;
+          this.placeCaretAtEnd();
+        } else {
+          this.$el.val(pre + post);
+          this.el.focus();
+          this.el.selectionStart = this.el.selectionEnd = pre.length;
+        }
 
-            $div = $('<div></div>').css(css).text(this.getTextFromHeadToCaret());
-            $span = $('<span></span>').text('.').appendTo($div);
-            this.$el.before($div);
-            position = $span.position();
-            position.top += $span.height() - this.$el.scrollTop();
+        this.skipNextKeyup = true;
+        this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
+      },
 
-            if (dir == 'rtl') {
-                position.left -= this.listView.$el.width();
-            }
+      /**
+       * Global click event handler.
+       */
+      onClickDocument: function(e) {
+        if (e.originalEvent && !e.originalEvent.keepTextCompleteDropdown) {
+          this.listView.deactivate();
+        }
+      },
 
-            $div.remove();
-            return position;
-        },
-        getTextFromHeadToCaret: function () {
-            var text, selectionEnd, range;
-            selectionEnd = this.el.selectionEnd;
-            if (typeof selectionEnd === 'number' && this.el.contentEditable !== 'true') {
-              text = this.el.value.substring(0, selectionEnd);
-            } else if (document.selection) {
-              range = this.el.createTextRange();
-              range.moveStart('character', 0);
-              range.moveEnd('textedit');
-              text = range.text;
-            } else if (this.el.contentEditable === 'true') {
-              range = window.getSelection().getRangeAt(0);
-              var preSelectionRange = range.cloneRange();
-              preSelectionRange.selectNodeContents(this.el);
-              preSelectionRange.setEnd(range.startContainer, range.startOffset);
-              text = preSelectionRange.toString();
-            }
-            return text;
-        },
+      /**
+       * Global keyup event handler.
+       */
+      onKeyupDocument: function(e) {
+        if (this.listView.shown && e.keyCode === 27) { // ESC
+          this.listView.deactivate();
+          this.$el.focus();
+        }
+      },
 
-        /**
-         * Sets caret at the end of the text (cross-browser).
-         * Only needed for contenteditable element.
-         * http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
-         */
-        placeCaretAtEnd: function() {
-            if (typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
-                var selection = window.getSelection();
-                var range = document.createRange();
+      /**
+       * Remove all event handlers and the wrapper element.
+       */
+      destroy: function() {
+        var $wrapper;
+        this.$el.off('.textComplete');
+        $(document).off('.' + this.id);
+        if (this.listView) {
+          this.listView.destroy();
+        }
+        $wrapper = this.$el.parent();
+        $wrapper.after(this.$el).remove();
+        this.$el.data('textComplete', void 0);
+        this.$el = null;
+      },
 
-                range.selectNodeContents(this.el);
-                range.collapse(false);
+      // Helper methods
+      // ==============
 
-                selection.removeAllRanges();
-                selection.addRange(range);
-            } else if (typeof document.body.createTextRange !== 'undefined') {
-                var textRange = document.body.createTextRange();
-                textRange.moveToElementText(this.el);
-                textRange.collapse(false);
-                textRange.select();
-            }
-        },
+      /**
+       * Returns caret's relative coordinates from textarea's left top corner.
+       */
+      getCaretPosition: function() {
+        // Browser native API does not provide the way to know the position of
+        // caret in pixels, so that here we use a kind of hack to accomplish
+        // the aim. First of all it puts a div element and completely copies
+        // the textarea's style to the element, then it inserts the text and a
+        // span element into the textarea.
+        // Consequently, the span element's position is the thing what we want.
 
-        /**
-         * Parse the value of textarea and extract search query.
-         */
-        extractSearchQuery: function(text) {
-            // If a search query found, it returns used strategy and the query
-            // term. If the caret is currently in a code block or search query does
-            // not found, it returns an empty array.
-            var name, strategy, match;
-            for (name in this.strategies)
-            if (this.strategies.hasOwnProperty(name)) {
-                strategy = this.strategies[name];
-                match = text.match(strategy.match);
-                if (match) {
-                    return [strategy, match[strategy.index]];
-                }
-            }
-            return [];
-        },
-        search: utils.lock(function(free, searchQuery) {
-            var term, strategy;
-            this.strategy = searchQuery[0];
-            term = searchQuery[1];
-            this.strategy.search(term, this.searchCallbackFactory(free));
-        })
+        if (this.el.selectionEnd === 0) return;
+        var properties, css, $div, $span, position, dir;
+
+        dir = this.$el.attr('dir') || this.$el.css('direction');
+        properties = ['border-width', 'font-family', 'font-size', 'font-style',
+          'font-variant', 'font-weight', 'height', 'letter-spacing',
+          'word-spacing', 'line-height', 'text-decoration', 'text-align',
+          'width', 'padding-top', 'padding-right', 'padding-bottom',
+          'padding-left', 'margin-top', 'margin-right', 'margin-bottom',
+          'margin-left'
+        ];
+        css = angular.extend({
+          position: 'absolute',
+          overflow: 'auto',
+          'white-space': 'pre-wrap',
+          top: 0,
+          left: -9999,
+          direction: dir
+        }, utils.getStyles(this.$el, properties));
+
+        $div = $('<div></div>').css(css).text(this.getTextFromHeadToCaret());
+        $span = $('<span></span>').text('.').appendTo($div);
+        this.$el.before($div);
+        position = $span.position();
+        position.top += $span.height() - this.$el.scrollTop();
+
+        if (dir == 'rtl') {
+          position.left -= this.listView.$el.width();
+        }
+
+        $div.remove();
+        return position;
+      },
+
+      getTextFromHeadToCaret: function() {
+        var text, selectionEnd, range;
+        selectionEnd = this.el.selectionEnd;
+        if (typeof selectionEnd === 'number' && this.el.contentEditable !== 'true') {
+          text = this.el.value.substring(0, selectionEnd);
+        } else if (document.selection) {
+          range = this.el.createTextRange();
+          range.moveStart('character', 0);
+          range.moveEnd('textedit');
+          text = range.text;
+        } else if (this.el.contentEditable === 'true') {
+          range = window.getSelection().getRangeAt(0);
+          var preSelectionRange = range.cloneRange();
+          preSelectionRange.selectNodeContents(this.el);
+          preSelectionRange.setEnd(range.startContainer, range.startOffset);
+          text = preSelectionRange.toString();
+        }
+        return text;
+      },
+
+      /**
+       * Sets caret at the end of the text (cross-browser).
+       * Only needed for contenteditable element.
+       * http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
+       */
+      placeCaretAtEnd: function() {
+        if (typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
+          var selection = window.getSelection();
+          var range = document.createRange();
+
+          range.selectNodeContents(this.el);
+          range.collapse(false);
+
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } else if (typeof document.body.createTextRange !== 'undefined') {
+          var textRange = document.body.createTextRange();
+          textRange.moveToElementText(this.el);
+          textRange.collapse(false);
+          textRange.select();
+        }
+      },
+
+      /**
+       * Parse the value of textarea and extract search query.
+       */
+      extractSearchQuery: function(text) {
+        // If a search query found, it returns used strategy and the query
+        // term. If the caret is currently in a code block or search query does
+        // not found, it returns an empty array.
+        var i, l, strategy, match;
+        for (i = 0, l = this.strategies.length; i < l; i++) {
+          strategy = this.strategies[i];
+          match = text.match(strategy.match);
+          if (match) {
+            return [strategy, match[strategy.index]];
+          }
+        }
+        return [];
+      },
+
+      search: utils.lock(function(free, searchQuery) {
+        var term;
+        this.strategy = searchQuery[0];
+        term = searchQuery[1];
+        this.strategy.search(term, this.searchCallbackFactory(free));
+      })
     });
 
 
     /**
      * Completer's private functions
      */
-    var wrapElement = function ($el) {
-        return $el.wrap($baseWrapper.clone().css('display', $el.css('display')));
+    var wrapElement = function($el) {
+      return $el.wrap($baseWrapper.clone().css('display', $el.css('display')));
     };
 
     return Completer;
-}])
+  }
+])
 
 /**
  * Dropdown menu manager class.
  */
-.factory('ListView', ['utils', function(utils) {
-    function ListView($el, completer) {
-        this.data = [];
-        this.$el = $el;
-        this.index = 0;
-        this.completer = completer;
-        this.$el.on('click', 'li.textcomplete-item', utils.bind(this.onClick, this));
+.factory('ListView', ['utils',
+function(utils) {
+  function ListView($el, completer) {
+    this.data = [];
+    this.$el = $el;
+    this.index = 0;
+    this.completer = completer;
+    this.$el.on('click.textComplete', 'li.textcomplete-item', $.proxy(this.onClick, this));
+}
+
+angular.extend(ListView.prototype, {
+  shown: false,
+  render: function(data) {
+    var html, i, l, index, val;
+    html = '';
+    for (i = 0, l = data.length; i < l; i++) {
+      val = data[i];
+      if (utils.include(this.data, val)) continue;
+      index = this.data.length;
+      this.data.push(val);
+      html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
+      html += this.strategy.template(val);
+      html += '</a></li>';
+      if (this.data.length === this.strategy.maxCount) break;
     }
+    this.$el.append(html)
+    if (!this.data.length) {
+      this.deactivate();
+    } else {
+      this.activateIndexedItem();
+    }
+  },
+  clear: function() {
+    this.data = [];
+    this.$el.html('');
+    this.index = 0;
+    return this;
+  },
+  activateIndexedItem: function() {
+    this.$el.find('.active').removeClass('active');
+    this.getActiveItem().addClass('active');
+  },
+  getActiveItem: function() {
+    return $(this.$el.children().get(this.index));
+  },
+  activate: function() {
+    if (!this.shown) {
+      this.$el.show();
+      this.completer.$el.trigger('textComplete:show');
+      this.shown = true;
+    }
+    return this;
+  },
+  deactivate: function() {
+    if (this.shown) {
+      this.$el.hide();
+      this.completer.$el.trigger('textComplete:hide');
+      this.shown = false;
+      this.data = this.index = null;
+    }
+    return this;
+  },
+  setPosition: function(position) {
+    this.$el.css(position);
+    return this;
+  },
+  select: function(index) {
+    var self = this;
+    this.completer.onSelect(this.data[index]);
+    // Deactive at next tick to allow other event handlers to know whether
+    // the dropdown has been shown or not.
+    setTimeout(function() {
+      self.deactivate();
+    }, 0);
+  },
+  onKeydown: function(e) {
+    var $item;
+    if (!this.shown) return;
+    if (e.keyCode === 27) { // ESC
+      this.deactivate();
+    } else if (e.keyCode === 38) { // UP
+      e.preventDefault();
+      if (this.index === 0) {
+        this.index = this.data.length - 1;
+      } else {
+        this.index -= 1;
+      }
+      this.activateIndexedItem();
+    } else if (e.keyCode === 40) { // DOWN
+      e.preventDefault();
+      if (this.index === this.data.length - 1) {
+        this.index = 0;
+      } else {
+        this.index += 1;
+      }
+      this.activateIndexedItem();
+    } else if (e.keyCode === 13 || e.keyCode === 9) { // ENTER or TAB
+      e.preventDefault();
+      this.select(parseInt(this.getActiveItem().data('index'), 10));
+    }
+  },
+  onClick: function(e) {
+    var $e = $(e.target);
+    e.originalEvent.keepTextCompleteDropdown = true;
+    if (!$e.hasClass('textcomplete-item')) {
+      $e = $e.parents('li.textcomplete-item');
+    }
+    this.select(parseInt($e.data('index'), 10));
+  },
+  destroy: function() {
+    this.deactivate();
+    this.$el.off('click.textComplete').remove();
+    this.$el = null;
+  }
+});
 
-    angular.extend(ListView.prototype, {
-        shown: false,
-        render: function(data) {
-            var html, i, l, index, val;
-            html = '';
-            for (i = 0, l = data.length; i < l; i++) {
-                val = data[i];
-                if (utils.include(this.data, val)) continue;
-                index = this.data.length;
-                this.data.push(val);
-                html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
-                html += this.strategy.template(val);
-                html += '</a></li>';
-                if (this.data.length === this.strategy.maxCount) break;
-            }
-            this.$el.append(html)
-            if (!this.data.length) {
-                this.deactivate();
-            } else {
-                this.activateIndexedItem();
-            }
-        },
-        clear: function() {
-            this.data = [];
-            this.$el.html('');
-            this.index = 0;
-            return this;
-        },
-        activateIndexedItem: function() {
-            var $item;
-            this.$el.find('.active').removeClass('active');
-            this.getActiveItem().addClass('active');
-        },
-        getActiveItem: function() {
-            return $(this.$el.children().get(this.index));
-        },
-        activate: function() {
-            if (!this.shown) {
-                this.$el.show();
-                this.shown = true;
-            }
-            return this;
-        },
-        deactivate: function() {
-            if (this.shown) {
-                this.$el.hide();
-                this.shown = false;
-                this.data = this.index = null;
-            }
-            return this;
-        },
-        setPosition: function(position) {
-            this.$el.css(position);
-            return this;
-        },
-        select: function(index) {
-            this.completer.onSelect(this.data[index]);
-            this.deactivate();
-        },
-        onKeydown: function(e) {
-            var $item;
-            if (!this.shown) return;
-            if (e.keyCode === 27) { // ESC
-                this.deactivate();
-            } else if (e.keyCode === 38) { // UP
-                e.preventDefault();
-                if (this.index === 0) {
-                    this.index = this.data.length - 1;
-                } else {
-                    this.index -= 1;
-                }
-                this.activateIndexedItem();
-            } else if (e.keyCode === 40) { // DOWN
-                e.preventDefault();
-                if (this.index === this.data.length - 1) {
-                    this.index = 0;
-                } else {
-                    this.index += 1;
-                }
-                this.activateIndexedItem();
-            } else if (e.keyCode === 13 || e.keyCode === 9) { // ENTER or TAB
-                e.preventDefault();
-                this.select(parseInt(this.getActiveItem().data('index')));
-            }
-        },
-        onClick: function(e) {
-            var $e = $(e.target);
-            e.originalEvent.keepTextCompleteDropdown = true;
-            if (!$e.hasClass('textcomplete-item')) {
-                $e = $e.parents('li.textcomplete-item');
-            }
-            this.select(parseInt($e.data('index')));
-        }
-    });
-
-    return ListView;
+return ListView;
 }])
 
 /**
  * Textcomplete class.
  */
-.factory('Textcomplete', ['utils', 'Completer', function(utils, Completer) {
+.factory('Textcomplete', ['utils', 'Completer',
+  function(utils, Completer) {
     /**
      * Default template function.
      */
     function identity(obj) {
-        return obj;
+      return obj;
     };
 
     /**
@@ -507,26 +591,44 @@ angular.module('ngTextcomplete', [])
      * @param {Object} strategies
      */
     function Textcomplete(element, strategies) {
-        var name, strategy;
-        for (name in strategies) {
-            if (strategies.hasOwnProperty(name)) {
-                strategy = strategies[name];
-                if (!strategy.template) {
-                    strategy.template = identity;
-                }
-                if (strategy.index == null) {
-                    strategy.index = 2;
-                }
-                if (strategy.cache) {
-                    strategy.search = utils.memoize(strategy.search);
-                }
-                strategy.maxCount = strategy.maxCount || 10;
-            }
+      var i, l, strategy, dataKey;
+
+      dataKey = 'textComplete';
+
+      if (strategies === 'destroy') {
+        return this.each(function () {
+          var completer = $(this).data(dataKey);
+          if (completer) { completer.destroy(); }
+        });
+      }
+
+      for (i = 0, l = strategies.length; i < l; i++) {
+        strategy = strategies[i];
+        if (!strategy.template) {
+          strategy.template = identity;
         }
-        return new Completer(element, strategies);
+        if (strategy.index == null) {
+          strategy.index = 2;
+        }
+        if (strategy.cache) {
+          strategy.search = memoize(strategy.search);
+        }
+        strategy.maxCount || (strategy.maxCount = 10);
+      }
+
+        var completer;
+        completer = element.data(dataKey);
+        if (!completer) {
+          completer = new Completer(element);
+          element.data(dataKey, completer);
+        }
+        completer.register(strategies);
+
+      return completer;
     };
 
     return Textcomplete;
-}])
+  }
+])
 
 ;
