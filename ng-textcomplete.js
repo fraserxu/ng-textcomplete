@@ -131,36 +131,48 @@ angular.module('ngTextcomplete', [])
      * Completer manager class.
      */
     function Completer($el, strategies) {
-        var $wrapper, $list, focused;
-        $list = $baseList.clone();
-        this.el = $el.get(0); // textarea element
-        this.$el = $el;
-        $wrapper = _prepareWrapper(this.$el);
-        // Refocus the textarea if it is being focused
-        focused = this.el === document.activeElement;
-        this.$el.wrap($wrapper).before($list);
-        if (focused) {
-            this.el.focus();
-        }
-        this.listView = new ListView($list, this);
+        var focus;
+        this.el = $el.get(0);  // textarea element
+        focus = this.el === document.activeElement;
+        // Cannot wrap $el at initialize method lazily due to Firefox's behavior.
+        this.$el = wrapElement($el); // Focus is lost
         this.strategies = strategies;
-        this.$el.on('keyup', utils.bind(this.onKeyup, this));
-        this.$el.on('keydown', utils.bind(this.listView.onKeydown, this.listView));
-        // Global click event handler
-        $(document).on('click', utils.bind(function(e) {
-            if (e.originalEvent && !e.originalEvent.keepTextCompleteDropdown) {
-                this.listView.deactivate();
-            }
-        }, this));
+        if (focus) {
+            this.initialize();
+            this.$el.focus();
+        } else {
+            this.$el.one('focus.textComplete', $.proxy(this.initialize, this));
+        }
     };
 
     /**
      * Completer's public methods
      */
     angular.extend(Completer.prototype, {
+
         /**
-         * Show autocomplete list next to the caret.
-         */
+        * Prepare ListView and bind events.
+        */
+        initialize: function () {
+            var $list, globalEvents;
+            $list = $baseList.clone();
+            this.listView = new ListView($list, this);
+            this.$el
+              .before($list)
+              .on({
+                'keyup.textComplete': $.proxy(this.onKeyup, this),
+                'keydown.textComplete': $.proxy(this.listView.onKeydown,
+                                                this.listView)
+              });
+            globalEvents = {};
+            globalEvents['click.' + this.id] = $.proxy(this.onClickDocument, this);
+            globalEvents['keyup.' + this.id] = $.proxy(this.onKeyupDocument, this);
+            $(document).on(globalEvents);
+        },
+
+        /**
+        * Show autocomplete list next to the caret.
+        */
         renderList: function(data) {
             if (this.clearAtNext) {
                 this.listView.clear();
@@ -227,24 +239,18 @@ angular.module('ngTextcomplete', [])
                 post = newSubStr[1] + post;
                 newSubStr = newSubStr[0];
             }
+
             pre = pre.replace(this.strategy.match, newSubStr);
             if (this.el.contentEditable === 'true') {
               this.el.innerHTML = pre + post;
+              this.placeCaretAtEnd();
             } else {
               this.$el.val(pre + post);
+              this.el.focus();
+              this.el.selectionStart = this.el.selectionEnd = pre.length;
             }
+
             this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
-
-            /**
-             * Here is the main difference from the original repo cause
-             * once the user select the text, this result doesn't return
-             * back to the `$scope` object in angularjs
-             */
-            $rootScope.$broadcast('onSelect', this.$el.val());
-            $rootScope.$apply();
-
-            this.el.focus();
-            this.el.selectionStart = this.el.selectionEnd = pre.length;
         },
 
         // Helper methods
@@ -313,6 +319,30 @@ angular.module('ngTextcomplete', [])
             }
             return text;
         },
+
+        /**
+         * Sets caret at the end of the text (cross-browser).
+         * Only needed for contenteditable element.
+         * http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
+         */
+        placeCaretAtEnd: function() {
+            if (typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
+                var selection = window.getSelection();
+                var range = document.createRange();
+
+                range.selectNodeContents(this.el);
+                range.collapse(false);
+
+                selection.removeAllRanges();
+                selection.addRange(range);
+            } else if (typeof document.body.createTextRange !== 'undefined') {
+                var textRange = document.body.createTextRange();
+                textRange.moveToElementText(this.el);
+                textRange.collapse(false);
+                textRange.select();
+            }
+        },
+
         /**
          * Parse the value of textarea and extract search query.
          */
@@ -339,11 +369,12 @@ angular.module('ngTextcomplete', [])
         })
     });
 
+
     /**
      * Completer's private functions
      */
-    function _prepareWrapper($el) {
-        return $baseWrapper.css('display', $el.css('display'));
+    var wrapElement = function ($el) {
+        return $el.wrap($baseWrapper.clone().css('display', $el.css('display')));
     };
 
     return Completer;
@@ -472,10 +503,10 @@ angular.module('ngTextcomplete', [])
 
     /**
      * Textcomplete class
-     * @param {[type]} ta         [description]
-     * @param {[type]} strategies [description]
+     * @param {Element} element
+     * @param {Object} strategies
      */
-    function Textcomplete(ta, strategies) {
+    function Textcomplete(element, strategies) {
         var name, strategy;
         for (name in strategies) {
             if (strategies.hasOwnProperty(name)) {
@@ -492,7 +523,7 @@ angular.module('ngTextcomplete', [])
                 strategy.maxCount = strategy.maxCount || 10;
             }
         }
-        return new Completer(ta, strategies);
+        return new Completer(element, strategies);
     };
 
     return Textcomplete;
