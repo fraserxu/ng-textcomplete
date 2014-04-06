@@ -18,7 +18,7 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
             var ta = iElement.find('textarea');
             var textcomplete = new Textcomplete(ta, [
               {
-                match: /(^|\s)@(\w*)$/,
+                match: /(^|\s)@([\w\-]*)$/,
                 search: function(term, callback) {
                     callback($.map(mentions, function(mention) {
                         return mention.toLowerCase().indexOf(term.toLowerCase()) === 0 ? mention : null;
@@ -31,7 +31,17 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
               }
             ]);
 
-            console.log('textcomplete', textcomplete)
+            textcomplete.on({
+                'textComplete:select': function (e, value) {
+                    alert(value);
+                },
+                'textComplete:show': function (e) {
+                    $(this).data('autocompleting', true);
+                },
+                'textComplete:hide': function (e) {
+                    $(this).data('autocompleting', false);
+                }
+            })
         }
     }
 }])

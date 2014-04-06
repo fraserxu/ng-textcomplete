@@ -11,16 +11,28 @@ angular.module('ngTextcomplete', [])
      * Exclusive execution control utility.
      */
     function lock(func) {
-      var free, locked;
+      var free, locked, queuedArgsToReplay;
       free = function() {
         locked = false;
       };
       return function() {
-        var args;
-        if (locked) return;
+        var args = toArray(arguments);
+        if (locked) {
+          queuedArgsToReplay = args;
+          return;
+        };
         locked = true;
-        args = toArray(arguments);
-        args.unshift(free);
+        var that = this;
+        args.unshift(function replayOrFree() {
+          if (queuedArgsToReplay) {
+            var replayArgs = queuedArgsToReplay;
+            queuedArgsToReplay = undefined;
+            replayArgs.unshift(replayOrFree);
+            func.apply(that, replayArgs);
+          } else {
+            locked = false;
+          }
+        });
         func.apply(this, args);
       };
     };
@@ -32,15 +44,6 @@ angular.module('ngTextcomplete', [])
       return Array.prototype.slice.call(args);
     };
 
-    /**
-     * Bind the func to the context.
-     */
-    function bind(func, context) {
-      // Use native Function#bind if it's available.
-      return func.bind ? func.bind(context) : function() {
-        func.apply(context, arguments)
-      }
-    };
 
     /**
      * Get the styles of any element from property names.
@@ -96,7 +99,6 @@ angular.module('ngTextcomplete', [])
     return {
       lock: lock,
       toArray: toArray,
-      bind: bind,
       getStyles: getStyles,
       memoize: memoize,
       include: include
@@ -120,7 +122,6 @@ angular.module('ngTextcomplete', [])
       },
       list: {
         position: 'absolute',
-        top: 0,
         left: 0,
         zIndex: '100',
         display: 'none'
@@ -226,6 +227,7 @@ angular.module('ngTextcomplete', [])
         if (this.skipSearch(e)) { return; }
 
         searchQuery = this.extractSearchQuery(this.getTextFromHeadToCaret());
+
         if (searchQuery.length) {
           term = searchQuery[1];
           if (this.term === term) return; // Ignore shift-key or something.
@@ -241,31 +243,22 @@ angular.module('ngTextcomplete', [])
        * Suppress searching if it returns true.
        */
       skipSearch: function (e) {
-        if (this.skipNextKeyup) {
-          this.skipNextKeyup = false;
-          return true;
-        }
         switch (e.keyCode) {
           case 40:
           case 38:
             return true;
         }
+        if (e.ctrlKey) switch (e.keyCode) {
+          case 78: // Ctrl-N
+          case 80: // Ctrl-P
+            return true;
+        }
       },
 
       onSelect: function(value) {
-        var pre, post, newSubStr, selectionEnd;
+        var pre, post, newSubStr;
         pre = this.getTextFromHeadToCaret();
-        selectionEnd = this.el.selectionEnd;
-        if (this.el.contentEditable === 'true') {
-          var range = window.getSelection().getRangeAt(0);
-          var preSelectionRange = range.cloneRange();
-          preSelectionRange.selectNodeContents(this.el);
-          preSelectionRange.setEnd(range.startContainer, range.startOffset);
-          selectionEnd = preSelectionRange.toString().length + range.toString().length;
-          post = this.el.innerHTML.substring(selectionEnd);
-        } else {
-          post = this.el.value.substring(selectionEnd);
-        }
+        post = this.el.value.substring(this.el.selectionEnd);
 
         newSubStr = this.strategy.replace(value);
         if (angular.isArray(newSubStr)) {
@@ -274,17 +267,18 @@ angular.module('ngTextcomplete', [])
         }
 
         pre = pre.replace(this.strategy.match, newSubStr);
-        if (this.el.contentEditable === 'true') {
-          this.el.innerHTML = pre + post;
-          this.placeCaretAtEnd();
-        } else {
-          this.$el.val(pre + post);
-          this.el.focus();
-          this.el.selectionStart = this.el.selectionEnd = pre.length;
-        }
+        // if (this.el.contentEditable === 'true') {
+        //   this.el.innerHTML = pre + post;
+        //   this.placeCaretAtEnd();
+        // } else {
+        this.$el.val(pre + post)
+                .trigger('change')
+                .trigger('textComplete:select', value);
+        this.el.focus();
+        this.el.selectionStart = this.el.selectionEnd = pre.length;
+        // }
 
-        this.skipNextKeyup = true;
-        this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
+        // this.$el.trigger('input').trigger('change').trigger('textComplete:select', value);
       },
 
       /**
@@ -329,15 +323,8 @@ angular.module('ngTextcomplete', [])
        * Returns caret's relative coordinates from textarea's left top corner.
        */
       getCaretPosition: function() {
-        // Browser native API does not provide the way to know the position of
-        // caret in pixels, so that here we use a kind of hack to accomplish
-        // the aim. First of all it puts a div element and completely copies
-        // the textarea's style to the element, then it inserts the text and a
-        // span element into the textarea.
-        // Consequently, the span element's position is the thing what we want.
 
-        if (this.el.selectionEnd === 0) return;
-        var properties, css, $div, $span, position, dir;
+        var properties, css, $div, $span, position, dir, scrollbar;
 
         dir = this.$el.attr('dir') || this.$el.css('direction');
         properties = ['border-width', 'font-family', 'font-size', 'font-style',
@@ -345,11 +332,12 @@ angular.module('ngTextcomplete', [])
           'word-spacing', 'line-height', 'text-decoration', 'text-align',
           'width', 'padding-top', 'padding-right', 'padding-bottom',
           'padding-left', 'margin-top', 'margin-right', 'margin-bottom',
-          'margin-left'
+          'margin-left', 'border-style', 'box-sizing'
         ];
-        css = angular.extend({
+        scrollbar = this.$el[0].scrollHeight > this.$el[0].offsetHeight;
+        css = $.extend({
           position: 'absolute',
-          overflow: 'auto',
+          overflow: scrollbar ? 'scroll' : 'auto',
           'white-space': 'pre-wrap',
           top: 0,
           left: -9999,
@@ -373,53 +361,21 @@ angular.module('ngTextcomplete', [])
       getTextFromHeadToCaret: function() {
         var text, selectionEnd, range;
         selectionEnd = this.el.selectionEnd;
-        if (typeof selectionEnd === 'number' && this.el.contentEditable !== 'true') {
+        if (typeof selectionEnd === 'number') {
           text = this.el.value.substring(0, selectionEnd);
         } else if (document.selection) {
           range = this.el.createTextRange();
           range.moveStart('character', 0);
           range.moveEnd('textedit');
           text = range.text;
-        } else if (this.el.contentEditable === 'true') {
-          range = window.getSelection().getRangeAt(0);
-          var preSelectionRange = range.cloneRange();
-          preSelectionRange.selectNodeContents(this.el);
-          preSelectionRange.setEnd(range.startContainer, range.startOffset);
-          text = preSelectionRange.toString();
         }
         return text;
-      },
-
-      /**
-       * Sets caret at the end of the text (cross-browser).
-       * Only needed for contenteditable element.
-       * http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
-       */
-      placeCaretAtEnd: function() {
-        if (typeof window.getSelection !== 'undefined' && typeof document.createRange !== 'undefined') {
-          var selection = window.getSelection();
-          var range = document.createRange();
-
-          range.selectNodeContents(this.el);
-          range.collapse(false);
-
-          selection.removeAllRanges();
-          selection.addRange(range);
-        } else if (typeof document.body.createTextRange !== 'undefined') {
-          var textRange = document.body.createTextRange();
-          textRange.moveToElementText(this.el);
-          textRange.collapse(false);
-          textRange.select();
-        }
       },
 
       /**
        * Parse the value of textarea and extract search query.
        */
       extractSearchQuery: function(text) {
-        // If a search query found, it returns used strategy and the query
-        // term. If the caret is currently in a code block or search query does
-        // not found, it returns an empty array.
         var i, l, strategy, match;
         for (i = 0, l = this.strategies.length; i < l; i++) {
           strategy = this.strategies[i];
@@ -461,114 +417,145 @@ function(utils) {
     this.$el = $el;
     this.index = 0;
     this.completer = completer;
-    this.$el.on('click.textComplete', 'li.textcomplete-item', $.proxy(this.onClick, this));
-}
 
-angular.extend(ListView.prototype, {
-  shown: false,
-  render: function(data) {
-    var html, i, l, index, val;
-    html = '';
-    for (i = 0, l = data.length; i < l; i++) {
-      val = data[i];
-      if (utils.include(this.data, val)) continue;
-      index = this.data.length;
-      this.data.push(val);
-      html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
-      html += this.strategy.template(val);
-      html += '</a></li>';
-      if (this.data.length === this.strategy.maxCount) break;
-    }
-    this.$el.append(html)
-    if (!this.data.length) {
-      this.deactivate();
-    } else {
-      this.activateIndexedItem();
-    }
-  },
-  clear: function() {
-    this.data = [];
-    this.$el.html('');
-    this.index = 0;
-    return this;
-  },
-  activateIndexedItem: function() {
-    this.$el.find('.active').removeClass('active');
-    this.getActiveItem().addClass('active');
-  },
-  getActiveItem: function() {
-    return $(this.$el.children().get(this.index));
-  },
-  activate: function() {
-    if (!this.shown) {
-      this.$el.show();
-      this.completer.$el.trigger('textComplete:show');
-      this.shown = true;
-    }
-    return this;
-  },
-  deactivate: function() {
-    if (this.shown) {
-      this.$el.hide();
-      this.completer.$el.trigger('textComplete:hide');
-      this.shown = false;
-      this.data = this.index = null;
-    }
-    return this;
-  },
-  setPosition: function(position) {
-    this.$el.css(position);
-    return this;
-  },
-  select: function(index) {
-    var self = this;
-    this.completer.onSelect(this.data[index]);
-    // Deactive at next tick to allow other event handlers to know whether
-    // the dropdown has been shown or not.
-    setTimeout(function() {
-      self.deactivate();
-    }, 0);
-  },
-  onKeydown: function(e) {
-    var $item;
-    if (!this.shown) return;
-    if (e.keyCode === 27) { // ESC
-      this.deactivate();
-    } else if (e.keyCode === 38) { // UP
-      e.preventDefault();
-      if (this.index === 0) {
-        this.index = this.data.length - 1;
-      } else {
-        this.index -= 1;
-      }
-      this.activateIndexedItem();
-    } else if (e.keyCode === 40) { // DOWN
-      e.preventDefault();
-      if (this.index === this.data.length - 1) {
-        this.index = 0;
-      } else {
-        this.index += 1;
-      }
-      this.activateIndexedItem();
-    } else if (e.keyCode === 13 || e.keyCode === 9) { // ENTER or TAB
-      e.preventDefault();
-      this.select(parseInt(this.getActiveItem().data('index'), 10));
-    }
-  },
-  onClick: function(e) {
-    var $e = $(e.target);
-    e.originalEvent.keepTextCompleteDropdown = true;
-    if (!$e.hasClass('textcomplete-item')) {
-      $e = $e.parents('li.textcomplete-item');
-    }
-    this.select(parseInt($e.data('index'), 10));
-  },
-  destroy: function() {
-    this.deactivate();
-    this.$el.off('click.textComplete').remove();
-    this.$el = null;
+    this.$el.on('click.textComplete', 'li.textcomplete-item', $.proxy(this.onClick, this));
   }
-});
+
+  angular.extend(ListView.prototype, {
+    shown: false,
+
+    render: function(data) {
+      var html, i, l, index, val;
+
+      html = '';
+      for (i = 0, l = data.length; i < l; i++) {
+        val = data[i];
+        if (utils.include(this.data, val)) continue;
+        index = this.data.length;
+        this.data.push(val);
+        html += '<li class="textcomplete-item" data-index="' + index + '"><a>';
+        html += this.strategy.template(val);
+        html += '</a></li>';
+        if (this.data.length === this.strategy.maxCount) break;
+      }
+      this.$el.append(html)
+      if (!this.data.length) {
+        this.deactivate();
+      } else {
+        this.activateIndexedItem();
+      }
+    },
+
+    clear: function() {
+      this.data = [];
+      this.$el.html('');
+      this.index = 0;
+      return this;
+    },
+
+    activateIndexedItem: function() {
+      this.$el.find('.active').removeClass('active');
+      this.getActiveItem().addClass('active');
+    },
+
+    getActiveItem: function() {
+      return $(this.$el.children().get(this.index));
+    },
+
+    activate: function() {
+      if (!this.shown) {
+        this.$el.show();
+        this.completer.$el.trigger('textComplete:show');
+        this.shown = true;
+      }
+      return this;
+    },
+
+    deactivate: function() {
+      if (this.shown) {
+        this.$el.hide();
+        this.completer.$el.trigger('textComplete:hide');
+        this.shown = false;
+        this.data = [];
+        this.index = null;
+      }
+      return this;
+    },
+
+    setPosition: function(position) {
+
+      var fontSize;
+          // If the strategy has the 'placement' option set to 'top', move the
+          // position above the element
+      if(this.completer.strategy.placement === 'top') {
+        // Move it to be in line with the match character
+        fontSize = parseInt(this.$el.css('font-size'));
+        // Overwrite the position object to set the 'bottom' property instead of the top.
+        position = {
+          top: 'auto',
+          bottom: this.$el.parent().height() - position.top + fontSize,
+          left: position.left
+        };
+      } else {
+        // Overwrite 'bottom' property because once `placement: 'top'`
+        // strategy is shown, $el keeps the property.
+        position.bottom = 'auto';
+      }
+      this.$el.css(position);
+      return this;
+    },
+
+    select: function(index) {
+      var self = this;
+      this.completer.onSelect(this.data[index]);
+      // Deactive at next tick to allow other event handlers to know whether
+      // the dropdown has been shown or not.
+      setTimeout(function() {
+        self.deactivate();
+      }, 0);
+    },
+
+    onKeydown: function(e) {
+      if (!this.shown) return;
+      if (e.keyCode === 27) { // ESC
+        this.deactivate();
+      } else if (e.keyCode === 38 || (e.ctrlKey && e.keyCode === 80)) { // UP
+        e.preventDefault();
+        if (this.index === 0) {
+          this.index = this.data.length - 1;
+        } else {
+          this.index -= 1;
+        }
+        this.activateIndexedItem();
+      } else if (e.keyCode === 40 || (e.ctrlKey && e.keyCode === 78)) { // DOWN
+        e.preventDefault();
+        if (this.index === this.data.length - 1) {
+          this.index = 0;
+        } else {
+          this.index += 1;
+        }
+        this.activateIndexedItem();
+      } else if (e.keyCode === 13 || e.keyCode === 9) { // ENTER or TAB
+        e.preventDefault();
+        this.select(parseInt(this.getActiveItem().data('index'), 10));
+      }
+    },
+
+    onClick: function(e) {
+      var $e = $(e.target);
+      e.originalEvent.keepTextCompleteDropdown = true;
+      if (!$e.hasClass('textcomplete-item')) {
+        $e = $e.parents('li.textcomplete-item');
+      }
+      this.select(parseInt($e.data('index'), 10));
+    },
+
+    destroy: function() {
+      this.deactivate();
+      this.$el.off('click.textComplete').remove();
+      this.$el = null;
+    }
+  });
 
 return ListView;
 }])
@@ -624,7 +611,7 @@ return ListView;
         }
         completer.register(strategies);
 
-      return completer;
+      return $(completer);
     };
 
     return Textcomplete;
