@@ -31,17 +31,19 @@ angular.module('textcompleteApp', ['ngTextcomplete'])
               }
             ]);
 
-            textcomplete.on({
-                'textComplete:select': function (e, value) {
-                    alert(value);
-                },
-                'textComplete:show': function (e) {
-                    $(this).data('autocompleting', true);
-                },
-                'textComplete:hide': function (e) {
-                    $(this).data('autocompleting', false);
-                }
-            })
+            $(textcomplete).on({
+              'textComplete:select': function (e, value) {
+                scope.$apply(function() {
+                  scope.message = value
+                })
+              },
+              'textComplete:show': function (e) {
+                $(this).data('autocompleting', true);
+              },
+              'textComplete:hide': function (e) {
+                $(this).data('autocompleting', false);
+              }
+            });
         }
     }
 }])

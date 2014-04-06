@@ -271,9 +271,11 @@ angular.module('ngTextcomplete', [])
         //   this.el.innerHTML = pre + post;
         //   this.placeCaretAtEnd();
         // } else {
-        this.$el.val(pre + post)
-                .trigger('change')
-                .trigger('textComplete:select', value);
+
+        this.$el.val(pre + post);
+        $(this).trigger('change')
+          .trigger('textComplete:select', this.$el.val());
+
         this.el.focus();
         this.el.selectionStart = this.el.selectionEnd = pre.length;
         // }
@@ -465,7 +467,8 @@ function(utils) {
     activate: function() {
       if (!this.shown) {
         this.$el.show();
-        this.completer.$el.trigger('textComplete:show');
+        $(this).trigger('textComplete:show');
+        // this.completer.$el.trigger('textComplete:show');
         this.shown = true;
       }
       return this;
@@ -474,7 +477,8 @@ function(utils) {
     deactivate: function() {
       if (this.shown) {
         this.$el.hide();
-        this.completer.$el.trigger('textComplete:hide');
+        $(this).trigger('textComplete:show');
+        // this.completer.$el.trigger('textComplete:hide');
         this.shown = false;
         this.data = [];
         this.index = null;
