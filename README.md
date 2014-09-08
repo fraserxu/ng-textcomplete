@@ -8,7 +8,7 @@ Github like autocompleter in any textarea for angularjs. This module is build on
 * [AngularJS](http://angularjs.org) v1.0.1+
 
 
-### Gettting started
+### Getting started
 
 jQuery MUST be loaded ahead.
 
