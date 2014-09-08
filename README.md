@@ -102,3 +102,7 @@ $ uglifyjs ng-textcomplete.js > ng-textcomplete.min.js
 
 ### Contributor
 * [lpsBetty](https://github.com/lpsBetty)
+
+### License
+
+Licensed under the MIT License
