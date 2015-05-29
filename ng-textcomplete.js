@@ -497,16 +497,23 @@ function(utils) {
         // Overwrite the position object to set the 'bottom' property instead of the top.
         position = {
           top: 'auto',
-          bottom: this.$el.parent().height() - position.top + fontSize,
-          left: position.left
+          bottom: this.$el.parent().height() - position.top + fontSize
         };
       } else {
         // Overwrite 'bottom' property because once `placement: 'top'`
         // strategy is shown, $el keeps the property.
         position.bottom = 'auto';
       }
+
+      if( this.$el.parent().offset().left + position.left + this.$el.width() > $(window).width()){
+        position.right =  this.$el.parent().width() - position.left;
+        position.left = 'auto';
+      } else{
+        position.right = 'auto';
+      }
       this.$el.css(position);
       return this;
+
     },
 
     select: function(index) {
